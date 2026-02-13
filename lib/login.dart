@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
-  @override
-  _LoginPageState createState() => _LoginPageState();
-}
+class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
 
-class _LoginPageState extends State<LoginPage> {
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: 
-      )
-    )
+      appBar: AppBar(title: const Text('Login')),
+      body: const SignInScreen(), // ใช้ UI สำเร็จรูปจาก Firebase UI Auth
+    );
   }
-  
 }
-

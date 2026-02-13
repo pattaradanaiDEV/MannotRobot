@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "669682513676",
+    "project_id": "mannotrobot-35bc6",
+    "storage_bucket": "mannotrobot-35bc6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669682513676:android:56ad05e02e0ef115f1fb29",
+        "android_client_info": {
+          "package_name": "com.example.man_not_robot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDipWeMdKgW_ZaPPMqOZ5wXQ3q5sXkxN3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
