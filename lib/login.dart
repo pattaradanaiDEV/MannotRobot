@@ -8,7 +8,7 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Login')),
-      body: const SignInScreen(), // ใช้ UI สำเร็จรูปจาก Firebase UI Auth
+      body: const SignInScreen(),
     );
   }
 }
