@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart'; // new
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // new
+import 'login.dart';
+import 'signup.dart';
 
 import 'app_state.dart'; // new
 import 'home.dart';
@@ -39,45 +41,13 @@ final _router = GoRouter(
     // หน้า Login
     GoRoute(
       path: '/login',
-      builder: (context, state) => SignInScreen(
-        providers: [EmailAuthProvider()],
-        actions: [
-          AuthStateChangeAction(((context, state) {
-            final user = switch (state) {
-              SignedIn state => state.user,
-              UserCreated state => state.credential.user,
-              _ => null,
-            };
-            if (user == null) return;
-
-            // ถ้าเป็น User ใหม่ ให้ตั้ง Display Name จาก Email
-            if (state is UserCreated) {
-              user.updateDisplayName(user.email!.split('@')[0]);
-            }
-
-            context.go('/'); // ไปหน้า HomePage
-          })),
-          ForgotPasswordAction(((context, email) {
-            final uri = Uri(
-              path: '/forgot-password',
-              queryParameters: <String, String?>{'email': email},
-            );
-            context.push(uri.toString());
-          })),
-        ],
-      ),
+      builder: (context, state) => const LoginPage(),
     ),
 
     // หน้าลืมรหัสผ่าน
     GoRoute(
       path: '/forgot-password',
-      builder: (context, state) {
-        final arguments = state.uri.queryParameters;
-        return ForgotPasswordScreen(
-          email: arguments['email'],
-          headerMaxExtent: 200,
-        );
-      },
+      builder: (context, state) => const SignUpPage(),
     ),
   ],
 );
