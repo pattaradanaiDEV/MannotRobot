@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JobDetailScreen extends StatefulWidget {
-  const JobDetailScreen({super.key});
+  final String jobId;
+  final Map<String, dynamic> jobData;
+
+  const JobDetailScreen({
+    super.key,
+    required this.jobId,
+    required this.jobData,
+  });
 
   @override
   State<JobDetailScreen> createState() => _JobDetailScreenState();
@@ -9,9 +18,73 @@ class JobDetailScreen extends StatefulWidget {
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   bool isBookmarked = false;
+  List<dynamic> requirements = [];
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1. เช็กสถานะการเซฟงาน (Bookmark) ว่า User นี้เคยกดไว้หรือยัง
+    List<dynamic> likesList = widget.jobData['likes'] ?? [];
+    if (user != null) {
+      isBookmarked = likesList.contains(user!.uid);
+    }
+
+    // 2. ดึงข้อมูล Requirements
+    requirements = widget.jobData['requirements'] ?? [];
+  }
+
+  // ฟังก์ชันกดเซฟงาน (อัปเดต Firebase ทันที)
+  void _toggleBookmark() async {
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณาเข้าสู่ระบบก่อนบันทึกงาน")),
+      );
+      return;
+    }
+
+    setState(() {
+      isBookmarked = !isBookmarked;
+    });
+
+    // อัปเดตข้อมูลบน Firestore
+    DocumentReference docRef = FirebaseFirestore.instance
+        .collection('jobs')
+        .doc(widget.jobId);
+    if (isBookmarked) {
+      await docRef.update({
+        'likes': FieldValue.arrayUnion([user!.uid]),
+      });
+    } else {
+      await docRef.update({
+        'likes': FieldValue.arrayRemove([user!.uid]),
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ดึงข้อมูลพื้นฐานจาก jobData เพื่อนำมาแสดงผล
+    String title = widget.jobData['title'] ?? 'Job Title';
+    String company = widget.jobData['companyName'] ?? 'Company';
+    String location = widget.jobData['location'] ?? 'Location';
+    String salary = widget.jobData['salaryRange'] ?? 'N/A';
+    String jobType = widget.jobData['jobType'] ?? 'FULL-TIME';
+    String description =
+        widget.jobData['description'] ?? 'No description provided.';
+
+    // รูปโลโก้และรูปประกอบ
+    String logoUrl =
+        widget.jobData['logoUrl'] != null &&
+            widget.jobData['logoUrl'].toString().isNotEmpty
+        ? widget.jobData['logoUrl']
+        : 'https://i.pravatar.cc/150?img=33'; // Default logo
+    String imageUrl =
+        widget.jobData['imageUrl'] ??
+        'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -66,12 +139,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: Colors.amber.shade700,
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
-                          image: const DecorationImage(
-                            image: NetworkImage(
-                              'https://i.pravatar.cc/150?img=33',
-                            ),
+                          image: DecorationImage(
+                            image: NetworkImage(logoUrl),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -85,32 +156,32 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Head Chef',
-                                    style: TextStyle(
+                                    title,
+                                    style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                                 GestureDetector(
-                                  onTap: () => setState(
-                                    () => isBookmarked = !isBookmarked,
-                                  ),
+                                  onTap: _toggleBookmark,
                                   child: Icon(
                                     isBookmarked
                                         ? Icons.bookmark
                                         : Icons.bookmark_border,
-                                    color: Colors.grey.shade600,
+                                    color: isBookmarked
+                                        ? Colors.blue.shade600
+                                        : Colors.grey.shade600,
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Le Bernardin',
-                              style: TextStyle(
+                            Text(
+                              company,
+                              style: const TextStyle(
                                 color: Colors.blue,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -126,7 +197,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Posted 2 days ago',
+                                  'Recently posted',
                                   style: TextStyle(
                                     color: Colors.grey.shade500,
                                     fontSize: 12,
@@ -140,17 +211,18 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
+
                   // Tags
                   Row(
                     children: [
-                      _buildTag('Full-time', Colors.blue),
-                      _buildTag('Fine Dining', Colors.green),
-                      _buildTag('Senior Level', Colors.purple),
+                      _buildTag(jobType, Colors.blue),
+                      _buildTag('Active Hiring', Colors.green),
                     ],
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 8),
+
                   // Location & Salary
                   Row(
                     children: [
@@ -158,14 +230,14 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         child: _buildIconText(
                           Icons.location_on_outlined,
                           'Location',
-                          'New York, NY',
+                          location,
                         ),
                       ),
                       Expanded(
                         child: _buildIconText(
                           Icons.payments_outlined,
                           'Salary',
-                          '\$85k - \$110k',
+                          salary,
                         ),
                       ),
                     ],
@@ -182,65 +254,41 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'We are looking for an experienced Head Chef to lead our kitchen team. You will be responsible for ensuring the highest standards of culinary excellence, menu development, and kitchen management. The ideal candidate is passionate about French cuisine and has a proven track record in fine dining establishments.',
+              description,
               style: TextStyle(color: Colors.grey.shade700, height: 1.5),
             ),
             const SizedBox(height: 24),
 
-            // 3. Responsibilities
-            const Text(
-              'Responsibilities',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildCheckList(
-              'Design and update menus seasonally, maintaining high standards.',
-            ),
-            _buildCheckList(
-              'Supervise and train kitchen staff, ensuring efficient workflow.',
-            ),
-            _buildCheckList(
-              'Manage inventory, food costs, and supplier relationships.',
-            ),
-            _buildCheckList(
-              'Ensure compliance with sanitation and safety regulations.',
-            ),
-            const SizedBox(height: 24),
-
-            // 4. Requirements
+            // 3. Requirements / Qualifications (ดึงข้อมูลแบบไดนามิก)
             const Text(
               'Requirements',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            _buildBulletList(
-              '5+ years of experience as a Head Chef or Executive Chef.',
-            ),
-            _buildBulletList(
-              'Culinary degree or equivalent professional training.',
-            ),
-            _buildBulletList('Strong leadership and communication skills.'),
+            if (requirements.isEmpty)
+              const Text(
+                "ไม่มีระบุคุณสมบัติเฉพาะ",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ...requirements.map((req) => _buildCheckList(req.toString())),
+
             const SizedBox(height: 24),
 
-            // 5. Gallery
+            // 4. Gallery (รูปภาพประกอบงาน)
             const Text(
               'Gallery',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 100,
+              height: 140,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
+                  _buildGalleryImage(imageUrl),
+                  // สามารถดึงรูปจำลองอื่นๆ มาใส่เพิ่มได้หากต้องการความสวยงาม
                   _buildGalleryImage(
                     'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=500&q=80',
-                  ),
-                  _buildGalleryImage(
-                    'https://images.unsplash.com/photo-1507048331197-7d4ac70811cf?w=500&q=80',
-                  ),
-                  _buildGalleryImage(
-                    'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=500&q=80',
                   ),
                 ],
               ),
@@ -249,7 +297,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           ],
         ),
       ),
-      // แถบเมนูด้านล่าง
+
+      // แถบเมนูด้านล่าง (Apply Button)
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -293,7 +342,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("ส่งใบสมัครงานเรียบร้อยแล้ว!"),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade500,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -317,6 +372,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       ),
     );
   }
+
+  // --- Helper Widgets ---
 
   Widget _buildTag(String text, Color color) {
     return Container(
@@ -360,7 +417,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             const SizedBox(height: 2),
             Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -387,35 +446,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     );
   }
 
-  Widget _buildBulletList(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '•',
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 20,
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(color: Colors.grey.shade700, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildGalleryImage(String url) {
     return Container(
-      width: 140,
+      width: 180,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
