@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/firestore_service.dart';
+import 'recipe_detail_screen.dart';
+import 'job_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
 
-  const HomeScreen({
+  // เรียกใช้ FirestoreService ที่เราเขียนไว้
+  final FirestoreService _firestoreService = FirestoreService();
+
+  HomeScreen({
     super.key,
     required this.isRecipeMode,
     required this.onModeChanged,
@@ -42,7 +49,7 @@ class HomeScreen extends StatelessWidget {
             child: CircleAvatar(
               backgroundColor: Colors.grey,
               radius: 18,
-              child: Icon(Icons.person, color: Colors.white, size: 20),
+              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
             ),
           ),
         ],
@@ -76,9 +83,15 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+
+            // 1. แถบ Trending (โชว์ 5 อันดับแรก)
             _buildTrendingSection(primaryColor),
+
             const SizedBox(height: 16),
+
+            // 2. ฟีดข้อมูลหลัก (ดึงจาก Firebase ทั้งหมด)
             isRecipeMode ? _buildRecipeFeed(context) : _buildJobFeed(context),
+
             const SizedBox(height: 80),
           ],
         ),
@@ -163,69 +176,521 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // ==========================================
+  // WIDGET: Trending Section (ดึง 5 รายการแรกจาก Firebase)
+  // ==========================================
   Widget _buildTrendingSection(Color tagColor) {
-    // TODO: รับข้อมูลจาก Firebase
-    List<dynamic> trendingItems = [];
+    return StreamBuilder<QuerySnapshot>(
+      // เลือกว่าจะดึง Recipes หรือ Jobs ตามโหมดปัจจุบัน
+      stream: isRecipeMode
+          ? _firestoreService.getRecipes()
+          : _firestoreService.getJobs(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 160,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox(
+            height: 160,
+            child: Center(
+              child: Text(
+                "ยังไม่มีข้อมูล Trending",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
 
-    if (trendingItems.isEmpty) {
-      return const SizedBox(
-        height: 160,
-        child: Center(
-          child: Text(
-            "ยังไม่มีข้อมูล Trending",
-            style: TextStyle(color: Colors.grey),
+        final docs = snapshot.data!.docs;
+        final int itemCount = docs.length > 5
+            ? 5
+            : docs.length; // ดึงมาแค่ 5 อัน
+
+        return SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: itemCount,
+            itemBuilder: (context, index) {
+              var data = docs[index].data() as Map<String, dynamic>;
+
+              String title = data['title'] ?? 'No Title';
+              String subtitle = isRecipeMode
+                  ? 'By ${data['authorName'] ?? 'Unknown'}'
+                  : (data['companyName'] ?? 'Company');
+              String imageUrl =
+                  data['imageUrl'] ??
+                  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: _buildTrendingCard(
+                  title,
+                  subtitle,
+                  imageUrl,
+                  tagColor,
+                  isHot: index == 0,
+                ), // ให้อันแรกติดป้าย Hot
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTrendingCard(
+    String title,
+    String subtitle,
+    String imageUrl,
+    Color tagColor, {
+    bool isHot = false,
+  }) {
+    return Container(
+      width: 260,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [Colors.black.withOpacity(0.8), Colors.transparent],
           ),
         ),
-      );
-    }
-    return SizedBox(
-      height: 160,
-      child: ListView.builder(
-        itemCount: trendingItems.length,
-        itemBuilder: (context, index) => const SizedBox(),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isHot)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: tagColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Hot',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // ==========================================
+  // WIDGET: Recipe Feed (ดึงจาก Firebase ทั้งหมด)
+  // ==========================================
   Widget _buildRecipeFeed(BuildContext context) {
-    // TODO: รับข้อมูลจาก Firebase
-    List<dynamic> recipes = [];
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestoreService.getRecipes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text(
+                "ยังไม่มีสูตรอาหาร",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
 
-    if (recipes.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
-            "ยังไม่มีสูตรอาหาร",
-            style: TextStyle(color: Colors.grey),
-          ),
-        ),
-      );
-    }
-    return ListView.builder(
-      itemCount: recipes.length,
-      itemBuilder: (context, index) => const SizedBox(),
+        final docs = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemBuilder: (context, index) {
+            var data = docs[index].data() as Map<String, dynamic>;
+            return _buildRecipeCard(context, data);
+          },
+        );
+      },
     );
   }
 
-  Widget _buildJobFeed(BuildContext context) {
-    // TODO: รับข้อมูลจาก Firebase
-    List<dynamic> jobs = [];
+  Widget _buildRecipeCard(BuildContext context, Map<String, dynamic> data) {
+    String title = data['title'] ?? 'Unknown Recipe';
+    String author = data['authorName'] ?? 'Unknown Chef';
+    String imageUrl =
+        data['imageUrl'] ??
+        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
+    String instructionSnippet =
+        data['instructions'] ?? 'No instructions provided.';
 
-    if (jobs.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
-            "ยังไม่มีประกาศรับสมัครงาน",
-            style: TextStyle(color: Colors.grey),
-          ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RecipeDetailScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
         ),
-      );
-    }
-    return ListView.builder(
-      itemCount: jobs.length,
-      itemBuilder: (context, index) => const SizedBox(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: Image.network(
+                    imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white.withOpacity(0.8),
+                    radius: 16,
+                    child: const Icon(
+                      Icons.favorite_border,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B4C),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    instructionSnippet,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundImage: NetworkImage(
+                              'https://i.pravatar.cc/150?img=12',
+                            ),
+                            radius: 12,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            author,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: Colors.orange.shade400,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            '4.8',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // WIDGET: Job Feed (ดึงจาก Firebase ทั้งหมด)
+  // ==========================================
+  Widget _buildJobFeed(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestoreService.getJobs(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text(
+                "ยังไม่มีประกาศรับสมัครงาน",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemBuilder: (context, index) {
+            var data = docs[index].data() as Map<String, dynamic>;
+            return _buildJobCard(context, data);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildJobCard(BuildContext context, Map<String, dynamic> data) {
+    String title = data['title'] ?? 'Job Title';
+    String company = data['companyName'] ?? 'Company';
+    String location = data['location'] ?? 'Location';
+    String salary = data['salaryRange'] ?? 'N/A';
+    String type = data['jobType'] ?? 'FULL-TIME';
+    String imageUrl =
+        data['imageUrl'] ??
+        'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const JobDetailScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: Image.network(
+                    imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      type.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white.withOpacity(0.9),
+                    radius: 16,
+                    child: Icon(
+                      Icons.favorite_border,
+                      size: 18,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B4C),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.business,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        company,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        location,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundImage: NetworkImage(
+                              'https://i.pravatar.cc/150?img=33',
+                            ),
+                            radius: 12,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Recruiter',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        salary,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
