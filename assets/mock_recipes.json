@@ -1,0 +1,322 @@
+[
+  {
+    "id": "rcp_001",
+    "authorName": "Chef Mali",
+    "title": "Authentic Pad Thai",
+    "difficulty": "Medium",
+    "timeMins": 30,
+    "tags": ["Thai", "Noodles", "Dinner"],
+    "ingredients": [
+      { "qty": "200g", "name": "Rice Noodles" },
+      { "qty": "100g", "name": "Shrimp" },
+      { "qty": "2 tbsp", "name": "Tamarind Paste" }
+    ],
+    "instructions": "1. Soak noodles. 2. Stir-fry shrimp. 3. Add noodles and sauce. 4. Serve with peanuts.",
+    "imageUrl": "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=800&q=80",
+    "createdAt": "2026-03-09T10:00:00Z"
+  },
+  {
+    "id": "rcp_002",
+    "authorName": "Healthy Habits",
+    "title": "Avocado Toast",
+    "difficulty": "Easy",
+    "timeMins": 10,
+    "tags": ["Breakfast", "Healthy", "Vegetarian"],
+    "ingredients": [
+      { "qty": "2 slices", "name": "Sourdough Bread" },
+      { "qty": "1", "name": "Avocado" },
+      { "qty": "2", "name": "Eggs" }
+    ],
+    "instructions": "1. Toast bread. 2. Mash avocado. 3. Fry eggs. 4. Assemble and season.",
+    "imageUrl": "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=800&q=80",
+    "createdAt": "2026-03-10T10:00:00Z"
+  },
+  {
+    "id": "rcp_003",
+    "authorName": "Marco Rossi",
+    "title": "Classic Carbonara",
+    "difficulty": "Medium",
+    "timeMins": 25,
+    "tags": ["Italian", "Pasta", "Dinner"],
+    "ingredients": [
+      { "qty": "200g", "name": "Spaghetti" },
+      { "qty": "100g", "name": "Pancetta" },
+      { "qty": "2", "name": "Eggs" }
+    ],
+    "instructions": "1. Boil pasta. 2. Fry pancetta. 3. Mix eggs and cheese. 4. Combine all off heat.",
+    "imageUrl": "https://images.unsplash.com/photo-1611270629569-8b357cb88da9?w=800&q=80",
+    "createdAt": "2026-03-11T10:00:00Z"
+  },
+  {
+    "id": "rcp_004",
+    "authorName": "Sweet Delights",
+    "title": "Chocolate Lava Cake",
+    "difficulty": "Hard",
+    "timeMins": 40,
+    "tags": ["Dessert", "Baking", "Sweet"],
+    "ingredients": [
+      { "qty": "100g", "name": "Dark Chocolate" },
+      { "qty": "100g", "name": "Butter" },
+      { "qty": "2", "name": "Eggs" }
+    ],
+    "instructions": "1. Melt chocolate and butter. 2. Whisk eggs and sugar. 3. Fold together. 4. Bake for 12 mins.",
+    "imageUrl": "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=800&q=80",
+    "createdAt": "2026-03-12T10:00:00Z"
+  },
+  {
+    "id": "rcp_005",
+    "authorName": "Barista Joe",
+    "title": "Matcha Latte",
+    "difficulty": "Easy",
+    "timeMins": 5,
+    "tags": ["Drinks", "Cold", "Cafe"],
+    "ingredients": [
+      { "qty": "1 tsp", "name": "Matcha Powder" },
+      { "qty": "1 cup", "name": "Milk" },
+      { "qty": "1 tbsp", "name": "Honey" }
+    ],
+    "instructions": "1. Whisk matcha with hot water. 2. Add milk and ice. 3. Sweeten with honey.",
+    "imageUrl": "https://images.unsplash.com/photo-1536935338788-846bb9981813?w=800&q=80",
+    "createdAt": "2026-03-13T10:00:00Z"
+  },
+  {
+    "id": "rcp_006",
+    "authorName": "Spice Master",
+    "title": "Chicken Tikka Masala",
+    "difficulty": "Hard",
+    "timeMins": 60,
+    "tags": ["Indian", "Curry", "Dinner"],
+    "ingredients": [
+      { "qty": "500g", "name": "Chicken Breast" },
+      { "qty": "1 cup", "name": "Yogurt" },
+      { "qty": "2 tbsp", "name": "Garam Masala" }
+    ],
+    "instructions": "1. Marinate chicken. 2. Grill chicken. 3. Prepare tomato gravy. 4. Simmer chicken in gravy.",
+    "imageUrl": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80",
+    "createdAt": "2026-03-14T10:00:00Z"
+  },
+  {
+    "id": "rcp_007",
+    "authorName": "Mama Jane",
+    "title": "Beef Stroganoff",
+    "difficulty": "Medium",
+    "timeMins": 45,
+    "tags": ["Russian", "Beef", "Dinner"],
+    "ingredients": [
+      { "qty": "500g", "name": "Beef Strips" },
+      { "qty": "1 cup", "name": "Mushrooms" },
+      { "qty": "1/2 cup", "name": "Sour Cream" }
+    ],
+    "instructions": "1. Sear beef. 2. Sauté mushrooms and onions. 3. Make sauce. 4. Stir in sour cream.",
+    "imageUrl": "https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=800&q=80",
+    "createdAt": "2026-03-15T10:00:00Z"
+  },
+  {
+    "id": "rcp_008",
+    "authorName": "Chef Luigi",
+    "title": "Margherita Pizza",
+    "difficulty": "Medium",
+    "timeMins": 90,
+    "tags": ["Italian", "Pizza", "Lunch"],
+    "ingredients": [
+      { "qty": "1 ball", "name": "Pizza Dough" },
+      { "qty": "1/2 cup", "name": "Tomato Sauce" },
+      { "qty": "200g", "name": "Fresh Mozzarella" }
+    ],
+    "instructions": "1. Stretch dough. 2. Apply sauce and cheese. 3. Bake in hot oven. 4. Top with basil.",
+    "imageUrl": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80",
+    "createdAt": "2026-03-16T10:00:00Z"
+  },
+  {
+    "id": "rcp_009",
+    "authorName": "Sakura Kitchen",
+    "title": "Spicy Tuna Sushi",
+    "difficulty": "Medium",
+    "timeMins": 50,
+    "tags": ["Japanese", "Seafood", "Lunch"],
+    "ingredients": [
+      { "qty": "2 cups", "name": "Sushi Rice" },
+      { "qty": "200g", "name": "Sushi-grade Tuna" },
+      { "qty": "2 sheets", "name": "Nori" }
+    ],
+    "instructions": "1. Prepare sushi rice. 2. Mix tuna with spicy mayo. 3. Roll in nori and rice. 4. Slice.",
+    "imageUrl": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80",
+    "createdAt": "2026-03-17T10:00:00Z"
+  },
+  {
+    "id": "rcp_010",
+    "authorName": "Breakfast King",
+    "title": "Fluffy Pancakes",
+    "difficulty": "Easy",
+    "timeMins": 20,
+    "tags": ["Breakfast", "Sweet", "American"],
+    "ingredients": [
+      { "qty": "1.5 cups", "name": "Flour" },
+      { "qty": "1.25 cups", "name": "Milk" },
+      { "qty": "1", "name": "Egg" }
+    ],
+    "instructions": "1. Mix dry ingredients. 2. Whisk wet ingredients. 3. Combine. 4. Cook on griddle.",
+    "imageUrl": "https://images.unsplash.com/photo-1528207776546-384cb11362fc?w=800&q=80",
+    "createdAt": "2026-03-18T10:00:00Z"
+  },
+  {
+    "id": "rcp_011",
+    "authorName": "Comfort Eats",
+    "title": "Grilled Cheese",
+    "difficulty": "Easy",
+    "timeMins": 10,
+    "tags": ["Lunch", "Comfort", "American"],
+    "ingredients": [
+      { "qty": "2 slices", "name": "Bread" },
+      { "qty": "2 slices", "name": "Cheddar Cheese" },
+      { "qty": "1 tbsp", "name": "Butter" }
+    ],
+    "instructions": "1. Butter bread. 2. Place cheese between slices. 3. Grill until golden and melted.",
+    "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&q=80",
+    "createdAt": "2026-03-19T10:00:00Z"
+  },
+  {
+    "id": "rcp_012",
+    "authorName": "Soup Lover",
+    "title": "Tomato Basil Soup",
+    "difficulty": "Easy",
+    "timeMins": 30,
+    "tags": ["Soup", "Lunch", "Vegetarian"],
+    "ingredients": [
+      { "qty": "800g", "name": "Canned Tomatoes" },
+      { "qty": "1 cup", "name": "Vegetable Broth" },
+      { "qty": "1/2 cup", "name": "Fresh Basil" }
+    ],
+    "instructions": "1. Sauté onions and garlic. 2. Add tomatoes and broth. 3. Simmer. 4. Blend with basil.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80",
+    "createdAt": "2026-03-20T10:00:00Z"
+  },
+  {
+    "id": "rcp_013",
+    "authorName": "Burger Master",
+    "title": "Classic Beef Burger",
+    "difficulty": "Medium",
+    "timeMins": 25,
+    "tags": ["American", "Beef", "Dinner"],
+    "ingredients": [
+      { "qty": "200g", "name": "Ground Beef" },
+      { "qty": "1", "name": "Burger Bun" },
+      { "qty": "1 slice", "name": "Cheddar Cheese" }
+    ],
+    "instructions": "1. Form beef patty. 2. Grill to desired doneness. 3. Toast bun. 4. Assemble burger.",
+    "imageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&q=80",
+    "createdAt": "2026-03-21T10:00:00Z"
+  },
+  {
+    "id": "rcp_014",
+    "authorName": "Bakeology",
+    "title": "Chocolate Chip Cookies",
+    "difficulty": "Medium",
+    "timeMins": 35,
+    "tags": ["Dessert", "Baking", "Sweet"],
+    "ingredients": [
+      { "qty": "2 cups", "name": "Flour" },
+      { "qty": "1 cup", "name": "Chocolate Chips" },
+      { "qty": "1/2 cup", "name": "Brown Sugar" }
+    ],
+    "instructions": "1. Cream butter and sugar. 2. Add egg and vanilla. 3. Mix dry ingredients. 4. Bake at 350F.",
+    "imageUrl": "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
+    "createdAt": "2026-03-22T10:00:00Z"
+  },
+  {
+    "id": "rcp_015",
+    "authorName": "Thai Treats",
+    "title": "Mango Sticky Rice",
+    "difficulty": "Medium",
+    "timeMins": 60,
+    "tags": ["Thai", "Dessert", "Sweet"],
+    "ingredients": [
+      { "qty": "1 cup", "name": "Glutinous Rice" },
+      { "qty": "1 cup", "name": "Coconut Milk" },
+      { "qty": "1", "name": "Ripe Mango" }
+    ],
+    "instructions": "1. Soak and steam rice. 2. Warm coconut milk with sugar. 3. Mix with rice. 4. Serve with mango.",
+    "imageUrl": "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&q=80",
+    "createdAt": "2026-03-23T10:00:00Z"
+  },
+  {
+    "id": "rcp_016",
+    "authorName": "Pub Classics",
+    "title": "Fish and Chips",
+    "difficulty": "Hard",
+    "timeMins": 45,
+    "tags": ["British", "Seafood", "Dinner"],
+    "ingredients": [
+      { "qty": "2 fillets", "name": "White Fish" },
+      { "qty": "1 cup", "name": "Beer Batter" },
+      { "qty": "2", "name": "Potatoes" }
+    ],
+    "instructions": "1. Cut and fry potatoes. 2. Dip fish in batter. 3. Fry until golden. 4. Serve with tartar sauce.",
+    "imageUrl": "https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?w=800&q=80",
+    "createdAt": "2026-03-24T10:00:00Z"
+  },
+  {
+    "id": "rcp_017",
+    "authorName": "Mediterranean",
+    "title": "Greek Salad",
+    "difficulty": "Easy",
+    "timeMins": 15,
+    "tags": ["Salad", "Healthy", "Vegetarian"],
+    "ingredients": [
+      { "qty": "2", "name": "Tomatoes" },
+      { "qty": "1", "name": "Cucumber" },
+      { "qty": "100g", "name": "Feta Cheese" }
+    ],
+    "instructions": "1. Chop vegetables. 2. Toss with olives. 3. Add feta. 4. Dress with olive oil and oregano.",
+    "imageUrl": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&q=80",
+    "createdAt": "2026-03-25T10:00:00Z"
+  },
+  {
+    "id": "rcp_018",
+    "authorName": "Cheese Heaven",
+    "title": "Mac and Cheese",
+    "difficulty": "Medium",
+    "timeMins": 40,
+    "tags": ["American", "Comfort", "Dinner"],
+    "ingredients": [
+      { "qty": "200g", "name": "Macaroni" },
+      { "qty": "2 cups", "name": "Cheddar Cheese" },
+      { "qty": "2 cups", "name": "Milk" }
+    ],
+    "instructions": "1. Boil macaroni. 2. Make cheese sauce (roux + milk + cheese). 3. Combine. 4. Bake until bubbly.",
+    "imageUrl": "https://images.unsplash.com/photo-1543339494-b4cd4f7ba686?w=800&q=80",
+    "createdAt": "2026-03-26T10:00:00Z"
+  },
+  {
+    "id": "rcp_019",
+    "authorName": "Tokyo Eats",
+    "title": "Shoyu Ramen",
+    "difficulty": "Hard",
+    "timeMins": 120,
+    "tags": ["Japanese", "Soup", "Dinner"],
+    "ingredients": [
+      { "qty": "2 portions", "name": "Ramen Noodles" },
+      { "qty": "4 cups", "name": "Chicken Broth" },
+      { "qty": "2 tbsp", "name": "Soy Sauce" }
+    ],
+    "instructions": "1. Prepare broth and tare (soy mixture). 2. Boil noodles. 3. Assemble bowl. 4. Add toppings.",
+    "imageUrl": "https://images.unsplash.com/photo-1552611052-33e04de081de?w=800&q=80",
+    "createdAt": "2026-03-27T10:00:00Z"
+  },
+  {
+    "id": "rcp_020",
+    "authorName": "Tex Mex",
+    "title": "Beef Tacos",
+    "difficulty": "Easy",
+    "timeMins": 20,
+    "tags": ["Mexican", "Beef", "Dinner"],
+    "ingredients": [
+      { "qty": "300g", "name": "Ground Beef" },
+      { "qty": "1 packet", "name": "Taco Seasoning" },
+      { "qty": "4", "name": "Taco Shells" }
+    ],
+    "instructions": "1. Brown beef. 2. Add seasoning and water. 3. Simmer. 4. Serve in shells with toppings.",
+    "imageUrl": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=800&q=80",
+    "createdAt": "2026-03-08T10:00:00Z"
+  }
+]

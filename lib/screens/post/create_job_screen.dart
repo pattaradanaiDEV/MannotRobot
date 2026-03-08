@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/firestore_service.dart';
+import '../../models/job.dart';
 
 class CreateJobScreen extends StatefulWidget {
   const CreateJobScreen({super.key});
@@ -8,11 +11,90 @@ class CreateJobScreen extends StatefulWidget {
 }
 
 class _CreateJobScreenState extends State<CreateJobScreen> {
-  int jobTypeIndex = 0; // 0: Full-time
+  // State variables
+  int jobTypeIndex = 0;
+  final List<String> jobTypes = [
+    'Full-time',
+    'Part-time',
+    'Contract',
+    'Internship',
+  ];
+
+  // Services & Controllers
+  final FirestoreService _firestoreService = FirestoreService();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _companyController = TextEditingController();
+  final TextEditingController _minSalaryController = TextEditingController();
+  final TextEditingController _maxSalaryController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  // สำหรับคุณสมบัติ (Dynamic Requirements)
   List<String> requirements = [
     'Minimum 3 years in a high-volume kitchen',
     'Food Safety Certification (ServSafe)',
   ];
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _companyController.dispose();
+    _minSalaryController.dispose();
+    _maxSalaryController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  // ฟังก์ชันสำหรับส่งข้อมูลงานขึ้น Firebase
+  Future<void> _handlePostJob() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณาเข้าสู่ระบบก่อนโพสต์งาน")),
+      );
+      return;
+    }
+    if (_titleController.text.isEmpty || _companyController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณากรอกชื่อตำแหน่งและชื่อบริษัท")),
+      );
+      return;
+    }
+
+    // สร้างก้อนข้อมูล Job Object
+    Job newJob = Job(
+      userId: user.uid,
+      recruiterName: user.displayName ?? "Anonymous Recruiter",
+      companyName: _companyController.text,
+      title: _titleController.text,
+      jobType: jobTypes[jobTypeIndex],
+      salaryRange:
+          "\$${_minSalaryController.text} - \$${_maxSalaryController.text}",
+      location: _locationController.text,
+      description: _descriptionController.text,
+      requirements: requirements,
+      logoUrl: "", // สามารถเพิ่ม logic อัปโหลดรูปโลโก้ได้ในอนาคต
+      imageUrl:
+          "https://images.unsplash.com/photo-1556910103-1c02745aae4d", // Mockup URL
+      likes: [],
+    );
+
+    try {
+      await _firestoreService.addJob(newJob);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("โพสต์ประกาศรับสมัครงานสำเร็จ!")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("เกิดข้อผิดพลาด: $e")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +118,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: () {}, // สำหรับดูตัวอย่าง
             child: Text(
               'Preview',
               style: TextStyle(
@@ -78,34 +160,19 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                   ],
                 ),
                 const SizedBox(width: 12),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Sarah Jenkins',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          'Posting publicly as ',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          'Recruiter',
-                          style: TextStyle(
-                            color: Colors.blue.shade600,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Posting publicly as Recruiter',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
@@ -113,62 +180,81 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Job Title
             _buildSectionTitle('Job Title'),
-            _buildTextField('e.g. Head Chef, Sous Chef'),
+            _buildTextField(
+              'e.g. Head Chef, Sous Chef',
+              controller: _titleController,
+            ),
             const SizedBox(height: 20),
 
-            // Job Type
+            _buildSectionTitle('Company Name'),
+            _buildTextField(
+              'e.g. The Velvet Lounge',
+              controller: _companyController,
+            ),
+            const SizedBox(height: 20),
+
             _buildSectionTitle('Job Type'),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [
-                _buildTypeChip('Full-time', 0),
-                _buildTypeChip('Part-time', 1),
-                _buildTypeChip('Contract', 2),
-                _buildTypeChip('Internship', 3),
-              ],
+              children: List.generate(
+                jobTypes.length,
+                (index) => _buildTypeChip(jobTypes[index], index),
+              ),
             ),
             const SizedBox(height: 20),
 
-            // Salary Range
             _buildSectionTitle('Salary Range'),
             Row(
               children: [
-                Expanded(flex: 2, child: _buildTextField('Min', prefix: '\$ ')),
+                Expanded(
+                  flex: 2,
+                  child: _buildTextField(
+                    'Min',
+                    prefix: '\$ ',
+                    controller: _minSalaryController,
+                  ),
+                ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text('to', style: TextStyle(color: Colors.grey)),
                 ),
-                Expanded(flex: 2, child: _buildTextField('Max', prefix: '\$ ')),
+                Expanded(
+                  flex: 2,
+                  child: _buildTextField(
+                    'Max',
+                    prefix: '\$ ',
+                    controller: _maxSalaryController,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(flex: 2, child: _buildDropdown('/ year')),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Location
             _buildSectionTitle('Location'),
             _buildTextField(
               'Restaurant address or city',
               icon: Icons.location_on_outlined,
+              controller: _locationController,
             ),
             const SizedBox(height: 20),
 
-            // Description
             _buildSectionTitle('Description'),
             Container(
               height: 150,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const TextField(
+              child: TextField(
+                controller: _descriptionController,
                 maxLines: null,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Share the details of the opening here...',
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.grey),
@@ -177,7 +263,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Qualifications
             _buildSectionTitle('Qualifications & Requirements'),
             ...requirements.asMap().entries.map(
               (entry) => Padding(
@@ -211,8 +296,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                           color: Colors.grey.shade400,
                           size: 20,
                         ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                         onPressed: () =>
                             setState(() => requirements.removeAt(entry.key)),
                       ),
@@ -237,59 +320,13 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Photos
-            _buildSectionTitle('Photos'),
-            Row(
-              children: [
-                Container(
-                  height: 80,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blue.shade200,
-                      style: BorderStyle.solid,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_photo_alternate_outlined,
-                        color: Colors.grey.shade600,
-                      ),
-                      Text(
-                        'Upload',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&q=80',
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 32),
 
-            // Big Submit Button
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _handlePostJob, // เชื่อมต่อฟังก์ชันส่งข้อมูล
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade500,
                   shape: RoundedRectangleBorder(
@@ -313,7 +350,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  // --- Helpers สำหรับ UI หน้า Job ---
+  // --- Helper Widgets ---
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -328,7 +366,12 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, {String? prefix, IconData? icon}) {
+  Widget _buildTextField(
+    String hint, {
+    String? prefix,
+    IconData? icon,
+    TextEditingController? controller,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -337,12 +380,11 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
+        controller: controller,
         decoration: InputDecoration(
           hintText: hint,
           border: InputBorder.none,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
           prefixText: prefix,
-          prefixStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           prefixIcon: icon != null
               ? Icon(icon, color: Colors.grey.shade500, size: 20)
               : null,
@@ -388,11 +430,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
           items: [value]
-              .map(
-                (String val) => DropdownMenuItem(value: val, child: Text(val)),
-              )
+              .map((val) => DropdownMenuItem(value: val, child: Text(val)))
               .toList(),
           onChanged: (_) {},
         ),

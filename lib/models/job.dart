@@ -1,68 +1,71 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Recipe {
+class Job {
   final String? id; // Document ID ใน Firestore
   final String userId;
-  final String authorName;
+  final String recruiterName;
+  final String companyName;
   final String title;
-  final String difficulty; // Easy, Medium, Hard
-  final int timeMins;
-  final List<String> tags; // e.g., ['Thai', 'Dinner']
-  final List<Map<String, String>>
-  ingredients; // e.g., [{'qty': '1 cup', 'name': 'Sugar'}]
-  final String instructions;
+  final String jobType; // Full-time, Part-time, etc.
+  final String salaryRange; // e.g., "$60k - $75k"
+  final String location;
+  final String description;
+  final List<String> requirements;
+  final String logoUrl;
   final String imageUrl;
-  final List<String> likes; // เก็บ UserID ของคนที่กดหัวใจ
+  final List<String> likes; // เก็บ UserID ของคนที่กดเซฟงาน
   final DateTime? createdAt;
 
-  Recipe({
+  Job({
     this.id,
     required this.userId,
-    required this.authorName,
+    required this.recruiterName,
+    required this.companyName,
     required this.title,
-    required this.difficulty,
-    required this.timeMins,
-    required this.tags,
-    required this.ingredients,
-    required this.instructions,
+    required this.jobType,
+    required this.salaryRange,
+    required this.location,
+    required this.description,
+    required this.requirements,
+    required this.logoUrl,
     required this.imageUrl,
     required this.likes,
     this.createdAt,
   });
 
-  // ฟังก์ชันแปลงข้อมูลจาก Firestore (Map) มาเป็น Object ในแอป
-  factory Recipe.fromMap(String id, Map<String, dynamic> map) {
-    return Recipe(
+  // แปลงจาก Firestore Map เป็น Object
+  factory Job.fromMap(String id, Map<String, dynamic> map) {
+    return Job(
       id: id,
       userId: map['userId'] ?? '',
-      authorName: map['authorName'] ?? 'Unknown Chef',
+      recruiterName: map['recruiterName'] ?? 'Unknown Recruiter',
+      companyName: map['companyName'] ?? 'Unknown Company',
       title: map['title'] ?? '',
-      difficulty: map['difficulty'] ?? 'Easy',
-      timeMins: map['timeMins'] ?? 0,
-      tags: List<String>.from(map['tags'] ?? []),
-      ingredients: List<Map<String, String>>.from(
-        (map['ingredients'] ?? []).map(
-          (item) => Map<String, String>.from(item),
-        ),
-      ),
-      instructions: map['instructions'] ?? '',
+      jobType: map['jobType'] ?? 'Full-time',
+      salaryRange: map['salaryRange'] ?? 'N/A',
+      location: map['location'] ?? 'Remote',
+      description: map['description'] ?? '',
+      requirements: List<String>.from(map['requirements'] ?? []),
+      logoUrl: map['logoUrl'] ?? '',
       imageUrl: map['imageUrl'] ?? '',
       likes: List<String>.from(map['likes'] ?? []),
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
     );
   }
 
-  // ฟังก์ชันแปลง Object กลับเป็น Map เพื่อส่งขึ้นไปเซฟบน Firestore
+  // แปลง Object เป็น Map เพื่อบันทึกลง Firestore
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
-      'authorName': authorName,
+      'recruiterName': recruiterName,
+      'companyName': companyName,
       'title': title,
-      'difficulty': difficulty,
-      'timeMins': timeMins,
-      'tags': tags,
-      'ingredients': ingredients,
-      'instructions': instructions,
+      'jobType': jobType,
+      'salaryRange': salaryRange,
+      'location': location,
+      'description': description,
+      'requirements': requirements,
+      'logoUrl': logoUrl,
       'imageUrl': imageUrl,
       'likes': likes,
       'createdAt': FieldValue.serverTimestamp(),
