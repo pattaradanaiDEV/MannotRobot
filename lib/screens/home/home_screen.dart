@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // เพิ่มการ import นี้เพื่อดึง user ปัจจุบัน
 import '../../services/firestore_service.dart';
+
 import 'recipe_detail_screen.dart';
 import 'job_detail_screen.dart';
 
@@ -8,7 +10,6 @@ class HomeScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
 
-  // เรียกใช้ FirestoreService ที่เราเขียนไว้
   final FirestoreService _firestoreService = FirestoreService();
 
   HomeScreen({
@@ -22,6 +23,8 @@ class HomeScreen extends StatelessWidget {
     final Color primaryColor = isRecipeMode
         ? const Color(0xFFF97316)
         : Colors.blue.shade600;
+    final user =
+        FirebaseAuth.instance.currentUser; // ดึง User เพื่อเอาไว้แสดงรูปโปรไฟล์
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -37,19 +40,15 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_none,
-              color: Color(0xFF1A2B4C),
-            ),
-            onPressed: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
+          // ลบปุ่มกระดิ่งออก และเหลือแค่รูปโปรไฟล์
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               backgroundColor: Colors.grey,
               radius: 18,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+              backgroundImage: NetworkImage(
+                user?.photoURL ?? 'https://i.pravatar.cc/150?img=11',
+              ), // ดึงรูปจริงถ้ามี
             ),
           ),
         ],
@@ -84,12 +83,10 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            // 1. แถบ Trending (โชว์ 5 อันดับแรก)
             _buildTrendingSection(primaryColor),
 
             const SizedBox(height: 16),
 
-            // 2. ฟีดข้อมูลหลัก (ดึงจาก Firebase ทั้งหมด)
             isRecipeMode ? _buildRecipeFeed(context) : _buildJobFeed(context),
 
             const SizedBox(height: 80),
@@ -99,6 +96,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // (โค้ดส่วน _buildCustomTabBar และ _buildTrendingSection เหมือนเดิม ไม่มีการเปลี่ยนแปลง)
   Widget _buildCustomTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -176,23 +174,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Trending Section (ดึง 5 รายการแรกจาก Firebase)
-  // ==========================================
   Widget _buildTrendingSection(Color tagColor) {
     return StreamBuilder<QuerySnapshot>(
-      // เลือกว่าจะดึง Recipes หรือ Jobs ตามโหมดปัจจุบัน
       stream: isRecipeMode
           ? _firestoreService.getRecipes()
           : _firestoreService.getJobs(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const SizedBox(
             height: 160,
             child: Center(child: CircularProgressIndicator()),
           );
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
           return const SizedBox(
             height: 160,
             child: Center(
@@ -202,12 +195,9 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           );
-        }
 
         final docs = snapshot.data!.docs;
-        final int itemCount = docs.length > 5
-            ? 5
-            : docs.length; // ดึงมาแค่ 5 อัน
+        final int itemCount = docs.length > 5 ? 5 : docs.length;
 
         return SizedBox(
           height: 160,
@@ -217,7 +207,6 @@ class HomeScreen extends StatelessWidget {
             itemCount: itemCount,
             itemBuilder: (context, index) {
               var data = docs[index].data() as Map<String, dynamic>;
-
               String title = data['title'] ?? 'No Title';
               String subtitle = isRecipeMode
                   ? 'By ${data['authorName'] ?? 'Unknown'}'
@@ -225,7 +214,6 @@ class HomeScreen extends StatelessWidget {
               String imageUrl =
                   data['imageUrl'] ??
                   'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: _buildTrendingCard(
@@ -234,7 +222,7 @@ class HomeScreen extends StatelessWidget {
                   imageUrl,
                   tagColor,
                   isHot: index == 0,
-                ), // ให้อันแรกติดป้าย Hot
+                ),
               );
             },
           ),
@@ -313,16 +301,15 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ==========================================
-  // WIDGET: Recipe Feed (ดึงจาก Firebase ทั้งหมด)
+  // WIDGET: Recipe Feed (เพิ่มระบบกดหัวใจ)
   // ==========================================
   Widget _buildRecipeFeed(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestoreService.getRecipes(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(32.0),
@@ -332,7 +319,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           );
-        }
 
         final docs = snapshot.data!.docs;
 
@@ -342,15 +328,24 @@ class HomeScreen extends StatelessWidget {
           itemCount: docs.length,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemBuilder: (context, index) {
-            var data = docs[index].data() as Map<String, dynamic>;
-            return _buildRecipeCard(context, data);
+            final doc = docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return _buildRecipeCard(
+              context,
+              doc.id,
+              data,
+            ); // ส่ง Document ID ไปด้วย
           },
         );
       },
     );
   }
 
-  Widget _buildRecipeCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildRecipeCard(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
     String title = data['title'] ?? 'Unknown Recipe';
     String author = data['authorName'] ?? 'Unknown Chef';
     String imageUrl =
@@ -358,14 +353,18 @@ class HomeScreen extends StatelessWidget {
         'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
     String instructionSnippet =
         data['instructions'] ?? 'No instructions provided.';
+    String rating = (data['rating'] ?? 0.0).toString();
+
+    // ดึง User ปัจจุบัน และเช็กว่า User คนนี้เคยกด Like โพสต์นี้ไปหรือยัง
+    final user = FirebaseAuth.instance.currentUser;
+    final List<dynamic> likesList = data['likes'] ?? [];
+    final bool isLiked = user != null && likesList.contains(user.uid);
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecipeDetailScreen()),
-        );
-      },
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const RecipeDetailScreen()),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
@@ -395,16 +394,37 @@ class HomeScreen extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
+                // 🔴 อัปเดต: เปลี่ยนไอคอนหัวใจเป็นปุ่มที่กดได้
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.8),
-                    radius: 16,
-                    child: const Icon(
-                      Icons.favorite_border,
-                      size: 18,
-                      color: Colors.grey,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("กรุณาเข้าสู่ระบบก่อนกดถูกใจ"),
+                          ),
+                        );
+                        return;
+                      }
+                      // เรียกฟังก์ชันใน FirestoreService สลับสถานะ Like
+                      _firestoreService.toggleRecipeLike(
+                        docId,
+                        user.uid,
+                        !isLiked,
+                      );
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withOpacity(0.9),
+                      radius: 18,
+                      child: Icon(
+                        isLiked ? Icons.favorite : Icons.favorite_border,
+                        size: 20,
+                        color: isLiked
+                            ? Colors.red
+                            : Colors.grey.shade600, // ถ้ากดแล้วให้เป็นสีแดง
+                      ),
                     ),
                   ),
                 ),
@@ -463,9 +483,9 @@ class HomeScreen extends StatelessWidget {
                             size: 16,
                           ),
                           const SizedBox(width: 4),
-                          const Text(
-                            '4.8',
-                            style: TextStyle(
+                          Text(
+                            rating,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -484,16 +504,15 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ==========================================
-  // WIDGET: Job Feed (ดึงจาก Firebase ทั้งหมด)
+  // WIDGET: Job Feed (เพิ่มระบบกดเซฟงาน - ใช้หลักการเดียวกับ Like)
   // ==========================================
   Widget _buildJobFeed(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestoreService.getJobs(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(32.0),
@@ -503,7 +522,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           );
-        }
 
         final docs = snapshot.data!.docs;
 
@@ -513,15 +531,20 @@ class HomeScreen extends StatelessWidget {
           itemCount: docs.length,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemBuilder: (context, index) {
-            var data = docs[index].data() as Map<String, dynamic>;
-            return _buildJobCard(context, data);
+            final doc = docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return _buildJobCard(context, doc.id, data);
           },
         );
       },
     );
   }
 
-  Widget _buildJobCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildJobCard(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
     String title = data['title'] ?? 'Job Title';
     String company = data['companyName'] ?? 'Company';
     String location = data['location'] ?? 'Location';
@@ -531,13 +554,16 @@ class HomeScreen extends StatelessWidget {
         data['imageUrl'] ??
         'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80';
 
+    // เช็กสถานะการเซฟงาน (Favorite/Like)
+    final user = FirebaseAuth.instance.currentUser;
+    final List<dynamic> likesList = data['likes'] ?? [];
+    final bool isSaved = user != null && likesList.contains(user.uid);
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const JobDetailScreen()),
-        );
-      },
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const JobDetailScreen()),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
@@ -589,16 +615,38 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                // 🔴 อัปเดต: เปลี่ยนไอคอนเซฟงานเป็นปุ่มที่กดได้
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.9),
-                    radius: 16,
-                    child: Icon(
-                      Icons.favorite_border,
-                      size: 18,
-                      color: Colors.blue.shade600,
+                  child: GestureDetector(
+                    onTap: () async {
+                      if (user == null) return;
+                      // อนุโลมใช้ฟังก์ชัน toggle Like เดิม (คุณต้องไปเขียน toggleJobLike เพิ่มในอนาคตถ้าอยากแยกชัดเจน)
+                      // ในตอนนี้เราใช้ update ตรงๆ เลยเพื่อให้จบในไฟล์เดียว
+                      DocumentReference docRef = FirebaseFirestore.instance
+                          .collection('jobs')
+                          .doc(docId);
+                      if (isSaved) {
+                        await docRef.update({
+                          'likes': FieldValue.arrayRemove([user.uid]),
+                        });
+                      } else {
+                        await docRef.update({
+                          'likes': FieldValue.arrayUnion([user.uid]),
+                        });
+                      }
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withOpacity(0.9),
+                      radius: 18,
+                      child: Icon(
+                        isSaved ? Icons.bookmark : Icons.bookmark_border,
+                        size: 20,
+                        color: Colors
+                            .blue
+                            .shade600, // โหมดงานใช้ไอคอน Bookmark สีฟ้า
+                      ),
                     ),
                   ),
                 ),

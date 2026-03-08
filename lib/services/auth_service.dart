@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -25,17 +26,33 @@ class AuthService {
   }
 
   // ฟังก์ชัน: สมัครสมาชิก (Register) พร้อมตั้งชื่อ Display Name
+  // ในไฟล์ auth_service.dart
+
   Future<UserCredential> signUpWithEmailPassword(
     String email,
     String password,
     String fullName,
   ) async {
     try {
+      // 1. สร้างบัญชีใน Firebase Auth
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
-
-      // อัปเดตชื่อผู้ใช้
       await userCredential.user?.updateDisplayName(fullName);
+
+      // 2. สร้างข้อมูล Profile ใน Firestore Database (Collection: users)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+            'uid': userCredential.user!.uid,
+            'email': email,
+            'fullName': fullName,
+            'photoUrl':
+                'https://i.pravatar.cc/150?img=11', // ใส่รูป Default ไว้ก่อน
+            'savedRecipes': [], // เตรียม Array ว่างไว้เก็บของที่เซฟ
+            'savedJobs': [],
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
       return userCredential;
     } catch (e) {
