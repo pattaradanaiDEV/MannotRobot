@@ -4,8 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final Map<String, dynamic> jobData;
+  final String jobId;
 
-  const JobDetailScreen({super.key, required this.jobData});
+  const JobDetailScreen({
+    super.key,
+    required this.jobData,
+    required this.jobId,
+  });
 
   @override
   State<JobDetailScreen> createState() => _JobDetailScreenState();
@@ -106,7 +111,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           image: DecorationImage(
-                            image: NetworkImage(data['logoUrl'] ?? data['imageUrl']),
+                            image: NetworkImage(
+                              data['logoUrl'] ?? data['imageUrl'],
+                            ),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -117,12 +124,20 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              data['title'] ?? 'Job Title', // แสดงชื่อตำแหน่งจริง
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              data['title'] ??
+                                  'Job Title', // แสดงชื่อตำแหน่งจริง
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             Text(
-                              data['companyName'] ?? 'Company', // แสดงชื่อบริษัทจริง
-                              style: const TextStyle(color: Colors.blue, fontSize: 16),
+                              data['companyName'] ??
+                                  'Company', // แสดงชื่อบริษัทจริง
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 16,
+                              ),
                             ),
                             // ... ส่วนเวลา (Posted ago) ...
                           ],
@@ -142,10 +157,18 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildIconText(Icons.location_on_outlined, 'Location', data['location'] ?? 'N/A'),
+                        child: _buildIconText(
+                          Icons.location_on_outlined,
+                          'Location',
+                          data['location'] ?? 'N/A',
+                        ),
                       ),
                       Expanded(
-                        child: _buildIconText(Icons.payments_outlined, 'Salary', data['salaryRange'] ?? 'N/A'),
+                        child: _buildIconText(
+                          Icons.payments_outlined,
+                          'Salary',
+                          data['salaryRange'] ?? 'N/A',
+                        ),
                       ),
                     ],
                   ),
@@ -153,19 +176,26 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Job Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Job Description',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             Text(
-              data['description'] ?? 'No description provided.', // แสดงรายละเอียดงานจริง
+              data['description'] ??
+                  'No description provided.', // แสดงรายละเอียดงานจริง
               style: TextStyle(color: Colors.grey.shade700, height: 1.5),
             ),
             const SizedBox(height: 24),
 
             // 4. แสดง Requirements (เนื่องจากเป็น List<String>)
-            const Text('Requirements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Requirements',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             ...(data['requirements'] as List<dynamic>? ?? []).map((req) {
-              return _buildBulletList(req.toString());
+              return _buildCheckList(req.toString());
             }).toList(),
           ],
         ),
