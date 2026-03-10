@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firestore_service.dart';
+
 import 'recipe_detail_screen.dart';
 import 'job_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
-
-  // กำหนด User ID สมมติให้ตรงกับใน Firebase ( likes: ["u101"] )
-  final String myId = 'u101';
 
   final FirestoreService _firestoreService = FirestoreService();
 
@@ -19,34 +18,19 @@ class HomeScreen extends StatelessWidget {
     required this.onModeChanged,
   });
 
-  // ==========================================
-  // FUNCTION: Toggle Like (อัปเดตลง Firebase)
-  // ==========================================
-  Future<void> _toggleLike(String jobId, List<String> currentLikes) async {
-    DocumentReference jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
-
-    try {
-      if (currentLikes.contains(myId)) {
-        await jobRef.update({
-          'likes': FieldValue.arrayRemove([myId])
-        });
-        print("Unlike success for: $jobId");
-      } else {
-        await jobRef.update({
-          'likes': FieldValue.arrayUnion([myId])
-        });
-        print("Like success for: $jobId");
-      }
-    } catch (e) {
-      print("Error toggling like: $e");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = isRecipeMode
         ? const Color(0xFFF97316)
         : Colors.blue.shade600;
+
+    // ดึง User ปัจจุบันเพื่อเอาไว้แสดงรูปโปรไฟล์มุมขวาบน
+    final user = FirebaseAuth.instance.currentUser;
+    final String? photoUrl = user?.photoURL;
+    final String displayName = user?.displayName ?? user?.email ?? '?';
+    final String initial = displayName.isNotEmpty
+        ? displayName[0].toUpperCase()
+        : '?';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -62,16 +46,27 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF1A2B4C)),
-            onPressed: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
-              backgroundColor: Colors.grey,
+              backgroundColor:
+                  primaryColor, // ใช้สีพื้นหลังตามโหมด (ส้ม/ฟ้า) เมื่อไม่มีรูป
               radius: 18,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+              // แสดงรูปภาพถ้ามี URL รูป
+              backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                  ? NetworkImage(photoUrl)
+                  : null,
+              // แสดงตัวอักษรตัวแรกถ้าไม่มีรูปภาพ
+              child: (photoUrl == null || photoUrl.isEmpty)
+                  ? Text(
+                      initial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    )
+                  : null,
             ),
           ),
         ],
@@ -81,10 +76,37 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCustomTabBar(),
-            _buildSectionHeader(isRecipeMode ? 'Trending Now' : 'Featured Jobs', primaryColor),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isRecipeMode ? 'Trending Now' : 'Featured Jobs',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B4C),
+                    ),
+                  ),
+                  Text(
+                    'View all',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             _buildTrendingSection(primaryColor),
+
             const SizedBox(height: 16),
+
             isRecipeMode ? _buildRecipeFeed(context) : _buildJobFeed(context),
+
             const SizedBox(height: 80),
           ],
         ),
@@ -92,31 +114,232 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, Color primaryColor) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+  Widget _buildCustomTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C))),
-          Text('View all', style: TextStyle(fontSize: 14, color: primaryColor, fontWeight: FontWeight.w600)),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onModeChanged(true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isRecipeMode ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: isRecipeMode
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Center(
+                  child: Text(
+                    'Recipes',
+                    style: TextStyle(
+                      color: isRecipeMode
+                          ? const Color(0xFFF97316)
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onModeChanged(false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !isRecipeMode ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: !isRecipeMode
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Center(
+                  child: Text(
+                    'Jobs',
+                    style: TextStyle(
+                      color: !isRecipeMode
+                          ? Colors.blue.shade600
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ==========================================
-  // WIDGET: Job Feed (ใช้ StreamBuilder ดึงจาก Firebase)
-  // ==========================================
-  Widget _buildJobFeed(BuildContext context) {
+  Widget _buildTrendingSection(Color tagColor) {
     return StreamBuilder<QuerySnapshot>(
-      stream: _firestoreService.getJobs(),
+      stream: isRecipeMode
+          ? _firestoreService.getRecipes()
+          : _firestoreService.getJobs(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 160,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox(
+            height: 160,
+            child: Center(
+              child: Text(
+                "ยังไม่มีข้อมูล Trending",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        final docs = snapshot.data!.docs;
+        final int itemCount = docs.length > 5 ? 5 : docs.length;
+
+        return SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: itemCount,
+            itemBuilder: (context, index) {
+              var data = docs[index].data() as Map<String, dynamic>;
+              String title = data['title'] ?? 'No Title';
+              String subtitle = isRecipeMode
+                  ? 'By ${data['authorName'] ?? 'Unknown'}'
+                  : (data['companyName'] ?? 'Company');
+              String imageUrl =
+                  data['imageUrl'] ??
+                  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: _buildTrendingCard(
+                  title,
+                  subtitle,
+                  imageUrl,
+                  tagColor,
+                  isHot: index == 0,
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTrendingCard(
+    String title,
+    String subtitle,
+    String imageUrl,
+    Color tagColor, {
+    bool isHot = false,
+  }) {
+    return Container(
+      width: 260,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isHot)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: tagColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Hot',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // WIDGET: Recipe Feed
+  // ==========================================
+  Widget _buildRecipeFeed(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestoreService.getRecipes(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Padding(padding: EdgeInsets.all(32.0), child: Text("ยังไม่มีประกาศรับสมัครงาน", style: TextStyle(color: Colors.grey))));
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text(
+                "ยังไม่มีสูตรอาหาร",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
         }
 
         final docs = snapshot.data!.docs;
@@ -127,226 +350,42 @@ class HomeScreen extends StatelessWidget {
           itemCount: docs.length,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemBuilder: (context, index) {
-            var doc = docs[index];
+            final doc = docs[index];
             var data = doc.data() as Map<String, dynamic>;
-            // ใช้ doc.id (Document ID จาก Firebase) เพื่อความแม่นยำในการ Like
-            return _buildJobCard(context, data, doc.id);
+            return _buildRecipeCard(context, doc.id, data);
           },
         );
       },
     );
   }
 
-  Widget _buildJobCard(BuildContext context, Map<String, dynamic> data, String jobId) {
-    String title = data['title'] ?? 'Job Title';
-    String company = data['companyName'] ?? 'Company';
-    String location = data['location'] ?? 'Location';
-    String salary = data['salaryRange'] ?? 'N/A';
-    String type = data['jobType'] ?? 'FULL-TIME';
-    String imageUrl = data['imageUrl'] ?? 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80';
-
-    List<String> currentLikes = List<String>.from(data['likes'] ?? []);
-    bool isLiked = currentLikes.contains(myId);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => JobDetailScreen(jobData: data)));
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, spreadRadius: 2)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover),
-                ),
-                // ปุ่ม Like (GestureDetector อันเดียว ไม่ซ้อนทับ)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: () => _toggleLike(jobId, currentLikes),
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white.withOpacity(0.9),
-                      radius: 16,
-                      child: Icon(
-                        isLiked ? Icons.favorite : Icons.favorite_border,
-                        size: 18,
-                        color: isLiked ? Colors.red : Colors.blue.shade600,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.blue.shade600, borderRadius: BorderRadius.circular(8)),
-                    child: Text(type.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C))),
-                  const SizedBox(height: 6),
-                  _buildIconLabel(Icons.business, company),
-                  const SizedBox(height: 4),
-                  _buildIconLabel(Icons.location_on, location),
-                  const SizedBox(height: 16),
-                  const Divider(color: Color(0xFFEEEEEE)),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const CircleAvatar(backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=33'), radius: 12),
-                          const SizedBox(width: 8),
-                          Text('Recruiter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
-                        ],
-                      ),
-                      Text(salary, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blue.shade700)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIconLabel(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 4),
-        Expanded(child: Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
-      ],
-    );
-  }
-
-  // ... (ฟังก์ชัน _buildCustomTabBar, _buildTrendingSection, _buildRecipeFeed เหมือนเดิมที่เคยเขียนไว้) ...
-  // หมายเหตุ: อย่าลืมใส่ฟังก์ชัน TabBar และ Trending กลับมาด้วยนะครับ โค้ดด้านบนเน้นแก้ส่วน Job ที่พัง
-
-  Widget _buildCustomTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          _buildTabItem('Recipes', isRecipeMode, () => onModeChanged(true)),
-          _buildTabItem('Jobs', !isRecipeMode, () => onModeChanged(false)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabItem(String label, bool isActive, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
-          ),
-          child: Center(child: Text(label, style: TextStyle(color: isActive ? (label == 'Recipes' ? const Color(0xFFF97316) : Colors.blue.shade600) : Colors.grey.shade600, fontWeight: FontWeight.bold))),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrendingSection(Color tagColor) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: isRecipeMode ? _firestoreService.getRecipes() : _firestoreService.getJobs(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox(height: 160);
-        final docs = snapshot.data!.docs;
-        return SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: docs.length > 5 ? 5 : docs.length,
-            itemBuilder: (context, index) {
-              var data = docs[index].data() as Map<String, dynamic>;
-              return Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: _buildTrendingCard(data['title'] ?? '', isRecipeMode ? data['authorName'] : data['companyName'], data['imageUrl'], tagColor, isHot: index == 0),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTrendingCard(String title, String? subtitle, String? imageUrl, Color tagColor, {bool isHot = false}) {
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), image: DecorationImage(image: NetworkImage(imageUrl ?? ''), fit: BoxFit.cover)),
-      child: Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent])),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isHot) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), margin: const EdgeInsets.only(bottom: 8), decoration: BoxDecoration(color: tagColor, borderRadius: BorderRadius.circular(6)), child: const Text('Hot', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(subtitle ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecipeFeed(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestoreService.getRecipes(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const Center(child: Text("ยังไม่มีสูตรอาหาร"));
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: snapshot.data!.docs.length,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemBuilder: (context, index) => _buildRecipeCard(context, snapshot.data!.docs[index].data() as Map<String, dynamic>),
-        );
-      },
-    );
-  }
-
-  Widget _buildRecipeCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildRecipeCard(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
     String title = data['title'] ?? 'Unknown Recipe';
     String author = data['authorName'] ?? 'Unknown Chef';
-    String imageUrl = data['imageUrl'] ?? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
-    String instructionSnippet = data['instructions'] ?? 'No instructions provided.';
+    String authorPic = data['authorProfileUrl'] ?? ''; // ดึงรูปโปรไฟล์คนโพสต์
+    String imageUrl =
+        data['imageUrl'] ??
+        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
+    String instructionSnippet =
+        data['instructions'] ?? 'No instructions provided.';
+    String rating = (data['rating'] ?? 0.0).toString();
+
+    final user = FirebaseAuth.instance.currentUser;
+    final List<dynamic> likesList = data['likes'] ?? [];
+    final bool isLiked = user != null && likesList.contains(user.uid);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const RecipeDetailScreen()),
+          MaterialPageRoute(
+            builder: (context) =>
+                RecipeDetailScreen(recipeId: docId, recipeData: data),
+          ),
         );
       },
       child: Container(
@@ -368,16 +407,44 @@ class HomeScreen extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: Image.network(
+                    imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.8),
-                    radius: 16,
-                    child: const Icon(Icons.favorite_border, size: 18, color: Colors.grey),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("กรุณาเข้าสู่ระบบก่อนกดถูกใจ"),
+                          ),
+                        );
+                        return;
+                      }
+                      _firestoreService.toggleRecipeLike(
+                        docId,
+                        user.uid,
+                        !isLiked,
+                      );
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withOpacity(0.9),
+                      radius: 18,
+                      child: Icon(
+                        isLiked ? Icons.favorite : Icons.favorite_border,
+                        size: 20,
+                        color: isLiked ? Colors.red : Colors.grey.shade600,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -387,26 +454,330 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B4C),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 8),
-                  Text(instructionSnippet, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    instructionSnippet,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const CircleAvatar(backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12'), radius: 12),
+                          CircleAvatar(
+                            backgroundColor: Colors.orange.shade100,
+                            radius: 12,
+                            // เช็กว่ามีรูปโปรไฟล์หรือไม่
+                            backgroundImage: authorPic.isNotEmpty
+                                ? NetworkImage(authorPic)
+                                : null,
+                            child: authorPic.isEmpty
+                                ? Text(
+                                    author.isNotEmpty
+                                        ? author[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                  )
+                                : null,
+                          ),
                           const SizedBox(width: 8),
-                          Text(author, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                          Text(
+                            author,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
                         ],
                       ),
                       Row(
                         children: [
-                          Icon(Icons.star, color: Colors.orange.shade400, size: 16),
+                          Icon(
+                            Icons.star,
+                            color: Colors.orange.shade400,
+                            size: 16,
+                          ),
                           const SizedBox(width: 4),
-                          const Text('4.8', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text(
+                            rating,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // WIDGET: Job Feed
+  // ==========================================
+  Widget _buildJobFeed(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestoreService.getJobs(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text(
+                "ยังไม่มีประกาศรับสมัครงาน",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return _buildJobCard(context, doc.id, data);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildJobCard(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
+    String title = data['title'] ?? 'Job Title';
+    String company = data['companyName'] ?? 'Company';
+    String companyLogo = data['logoUrl'] ?? ''; // ดึงโลโก้บริษัท
+    String location = data['location'] ?? 'Location';
+    String salary = data['salaryRange'] ?? 'N/A';
+    String type = data['jobType'] ?? 'FULL-TIME';
+    String imageUrl =
+        data['imageUrl'] ??
+        'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80';
+
+    final user = FirebaseAuth.instance.currentUser;
+    final List<dynamic> likesList = data['likes'] ?? [];
+    final bool isSaved = user != null && likesList.contains(user.uid);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => JobDetailScreen(jobId: docId, jobData: data),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: Image.network(
+                    imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      type.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: () async {
+                      if (user == null) return;
+                      DocumentReference docRef = FirebaseFirestore.instance
+                          .collection('jobs')
+                          .doc(docId);
+                      if (isSaved) {
+                        await docRef.update({
+                          'likes': FieldValue.arrayRemove([user.uid]),
+                        });
+                      } else {
+                        await docRef.update({
+                          'likes': FieldValue.arrayUnion([user.uid]),
+                        });
+                      }
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withOpacity(0.9),
+                      radius: 18,
+                      child: Icon(
+                        isSaved ? Icons.bookmark : Icons.bookmark_border,
+                        size: 20,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B4C),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.business,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        company,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        location,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.blue.shade100,
+                            radius: 12,
+                            // เช็กว่าบริษัทมีโลโก้หรือไม่
+                            backgroundImage: companyLogo.isNotEmpty
+                                ? NetworkImage(companyLogo)
+                                : null,
+                            child: companyLogo.isEmpty
+                                ? Text(
+                                    company.isNotEmpty
+                                        ? company[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue.shade800,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            company,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        salary,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
                     ],
                   ),

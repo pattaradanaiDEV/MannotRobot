@@ -1,22 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/firestore_service.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
-  const RecipeDetailScreen({super.key});
+  final String recipeId;
+  final Map<String, dynamic> recipeData;
+
+  const RecipeDetailScreen({
+    super.key,
+    required this.recipeId,
+    required this.recipeData,
+  });
 
   @override
   State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
 }
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
-  bool isFavorite = true;
-  List<bool> ingredientChecked = [false, false, true, false];
+  bool isFavorite = false;
+  List<bool> ingredientChecked = [];
+  List<dynamic> ingredients = [];
+  List<String> instructions = [];
+
+  final FirestoreService _firestoreService = FirestoreService();
+  final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1. เช็กว่า User คนนี้เคยไลก์สูตรนี้หรือยัง
+    List<dynamic> likesList = widget.recipeData['likes'] ?? [];
+    if (user != null) {
+      isFavorite = likesList.contains(user!.uid);
+    }
+
+    // 2. ดึงข้อมูลส่วนผสม และสร้างสถานะ Checkbox (ติ๊กถูก) ให้เท่ากับจำนวนส่วนผสม
+    ingredients = widget.recipeData['ingredients'] ?? [];
+    ingredientChecked = List<bool>.filled(ingredients.length, false);
+
+    // 3. ดึงข้อความวิธีทำ แล้วแยกบรรทัด (\n) เป็นข้อๆ
+    String rawInstructions = widget.recipeData['instructions'] ?? '';
+    instructions = rawInstructions
+        .split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+  }
+
+  // ฟังก์ชันกดหัวใจ (อัปเดต Firebase ด้วย)
+  void _toggleFavorite() async {
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("กรุณาเข้าสู่ระบบก่อน")));
+      return;
+    }
+
+    setState(() {
+      isFavorite = !isFavorite;
+    });
+
+    // เรียกฟังก์ชันอัปเดตข้อมูลบน Firestore
+    await _firestoreService.toggleRecipeLike(
+      widget.recipeId,
+      user!.uid,
+      isFavorite,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ดึงข้อมูลพื้นฐานจาก recipeData เพื่อนำมาแสดงผล
+    String title = widget.recipeData['title'] ?? 'Unknown Recipe';
+    String author = widget.recipeData['authorName'] ?? 'Unknown Chef';
+    String imageUrl =
+        widget.recipeData['imageUrl'] ??
+        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80';
+    String time = '${widget.recipeData['timeMins'] ?? 0} min';
+    String rating = (widget.recipeData['rating'] ?? 0.0).toString();
+    String difficulty = widget.recipeData['difficulty'] ?? 'Medium';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
+          // ส่วนภาพปกด้านบน
           SliverAppBar(
             expandedHeight: 300.0,
             pinned: true,
@@ -32,12 +100,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              background: Image.network(
-                'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
-                fit: BoxFit.cover,
-              ),
+              background: Image.network(imageUrl, fit: BoxFit.cover),
             ),
           ),
+
+          // ส่วนเนื้อหาด้านล่าง
           SliverToBoxAdapter(
             child: Container(
               transform: Matrix4.translationValues(0.0, -24.0, 0.0),
@@ -50,13 +117,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ชื่อสูตร และ ปุ่มกดหัวใจ
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Roasted Vegetable & Quinoa Power Bowl',
-                            style: TextStyle(
+                            title,
+                            style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF1A2B4C),
@@ -67,15 +135,18 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         IconButton(
                           icon: Icon(
                             isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: const Color(0xFFF97316),
+                            color: isFavorite
+                                ? Colors.red
+                                : const Color(0xFFF97316),
                             size: 28,
                           ),
-                          onPressed: () =>
-                              setState(() => isFavorite = !isFavorite),
+                          onPressed: _toggleFavorite,
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // ข้อมูลเชฟ
                     Row(
                       children: [
                         const CircleAvatar(
@@ -85,19 +156,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           radius: 20,
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Sarah Jenkins',
-                                style: TextStyle(
+                                author,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
-                              Text(
-                                'Professional Chef',
+                              const Text(
+                                'Chef',
                                 style: TextStyle(
                                   color: Colors.grey,
                                   fontSize: 12,
@@ -120,20 +191,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
+
+                    // สถิติ (เวลา, เรตติ้ง, ความยาก)
                     Row(
                       children: [
-                        _buildStatCard(Icons.access_time, '45 min'),
+                        _buildStatCard(Icons.access_time, time),
                         const SizedBox(width: 12),
                         _buildStatCard(
                           Icons.star_border,
-                          '4.8',
+                          rating,
                           iconColor: const Color(0xFFF97316),
                         ),
                         const SizedBox(width: 12),
-                        _buildStatCard(Icons.bar_chart, 'Easy'),
+                        _buildStatCard(Icons.bar_chart, difficulty),
                       ],
                     ),
                     const SizedBox(height: 32),
+
+                    // ส่วนผสม (Ingredients) ดึงจากฐานข้อมูล
                     const Text(
                       'Ingredients',
                       style: TextStyle(
@@ -142,11 +217,25 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildIngredientItem(0, '1 cup', 'Quinoa', 'Uncooked'),
-                    _buildIngredientItem(1, '2 cups', 'Sweet Potato', 'Cubed'),
-                    _buildIngredientItem(2, '1', 'Avocado', 'Sliced'),
-                    _buildIngredientItem(3, '1/2 cup', 'Chickpeas', 'Rinsed'),
+                    if (ingredients.isEmpty)
+                      const Text(
+                        "ไม่มีข้อมูลส่วนผสม",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ...ingredients.asMap().entries.map((entry) {
+                      int idx = entry.key;
+                      Map<String, dynamic> ingMap =
+                          entry.value as Map<String, dynamic>;
+                      return _buildIngredientItem(
+                        idx,
+                        ingMap['qty'] ?? '',
+                        ingMap['name'] ?? '',
+                      );
+                    }),
+
                     const SizedBox(height: 32),
+
+                    // วิธีทำ (Instructions)
                     const Text(
                       'Instructions',
                       style: TextStyle(
@@ -155,17 +244,23 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInstructionStep(
-                      step: 1,
-                      title: 'Preheat and Prep',
-                      desc: 'Preheat your oven to 400°F (200°C)...',
-                    ),
-                    _buildInstructionStep(
-                      step: 2,
-                      title: 'Cook Quinoa',
-                      desc: 'While potatoes are roasting, rinse the quinoa...',
-                      isLast: true,
-                    ),
+                    if (instructions.isEmpty)
+                      const Text(
+                        "ไม่มีข้อมูลวิธีทำ",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ...instructions.asMap().entries.map((entry) {
+                      int step = entry.key + 1;
+                      String desc = entry.value;
+                      bool isLast = step == instructions.length;
+                      return _buildInstructionStep(
+                        step: step,
+                        title: 'Step $step',
+                        desc: desc,
+                        isLast: isLast,
+                      );
+                    }),
+
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -206,12 +301,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  Widget _buildIngredientItem(
-    int index,
-    String amount,
-    String name,
-    String state,
-  ) {
+  Widget _buildIngredientItem(int index, String amount, String name) {
     bool isChecked = ingredientChecked[index];
     return InkWell(
       onTap: () =>

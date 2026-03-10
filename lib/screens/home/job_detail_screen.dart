@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final Map<String, dynamic> jobData;
@@ -11,6 +13,51 @@ class JobDetailScreen extends StatefulWidget {
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   bool isBookmarked = false;
+  List<dynamic> requirements = [];
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1. เช็กสถานะการเซฟงาน (Bookmark) ว่า User นี้เคยกดไว้หรือยัง
+    List<dynamic> likesList = widget.jobData['likes'] ?? [];
+    if (user != null) {
+      isBookmarked = likesList.contains(user!.uid);
+    }
+
+    // 2. ดึงข้อมูล Requirements
+    requirements = widget.jobData['requirements'] ?? [];
+  }
+
+  // ฟังก์ชันกดเซฟงาน (อัปเดต Firebase ทันที)
+  void _toggleBookmark() async {
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณาเข้าสู่ระบบก่อนบันทึกงาน")),
+      );
+      return;
+    }
+
+    setState(() {
+      isBookmarked = !isBookmarked;
+    });
+
+    // อัปเดตข้อมูลบน Firestore
+    DocumentReference docRef = FirebaseFirestore.instance
+        .collection('jobs')
+        .doc(widget.jobId);
+    if (isBookmarked) {
+      await docRef.update({
+        'likes': FieldValue.arrayUnion([user!.uid]),
+      });
+    } else {
+      await docRef.update({
+        'likes': FieldValue.arrayRemove([user!.uid]),
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +170,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           ],
         ),
       ),
-      // แถบเมนูด้านล่าง
+
+      // แถบเมนูด้านล่าง (Apply Button)
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -143,7 +191,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("ส่งใบสมัครงานเรียบร้อยแล้ว!"),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade500,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -167,6 +221,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       ),
     );
   }
+
+  // --- Helper Widgets ---
 
   Widget _buildTag(String text, Color color) {
     return Container(
@@ -210,7 +266,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             const SizedBox(height: 2),
             Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -237,35 +295,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     );
   }
 
-  Widget _buildBulletList(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '•',
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 20,
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(color: Colors.grey.shade700, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildGalleryImage(String url) {
     return Container(
-      width: 140,
+      width: 180,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
