@@ -178,10 +178,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
               subtitle: Text(data['companyName'] ?? ''),
               trailing: const Text('Apply', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
               onTap: () {
+                // ดึง ID ของ document ออกมา (ใน Recent Opportunities เรามี docId อยู่แล้ว)
+                final String docId = docs[index].id;
+                var data = docs[index].data() as Map<String, dynamic>;
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => JobDetailScreen(jobData: data), // ส่ง data ไปที่ Constructor
+                    builder: (context) => JobDetailScreen(
+                      jobData: data,
+                      jobId: docId, // เพิ่มบรรทัดนี้เข้าไปให้ตรงตามที่ Constructor ต้องการ
+                    ),
                   ),
                 );
               },

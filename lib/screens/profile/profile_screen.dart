@@ -16,8 +16,9 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    // ใช้ displayName จาก Firebase หรือถ้าไม่มีให้แสดงเป็นชื่อ Default
-    final String displayName = user?.displayName ?? 'Pattaradanai';
+    final String displayName = user?.displayName ?? user?.email ?? 'User';
+    final String photoUrl = user?.photoURL ?? '';
+    final String initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -30,30 +31,24 @@ class ProfileScreen extends StatelessWidget {
         ),
         title: const Text(
           'My Profile',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        // *** ลบ IconSettings (ฟันเฟือง) ออกเรียบร้อยแล้ว ***
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 16),
-            _buildProfileHeader(displayName),
+            _buildProfileHeader(displayName, photoUrl, initial),
             const SizedBox(height: 24),
 
-            // สถิติแสดงผลตาม userId ของคนปัจจุบัน
+            // สถิติ: เหลือแค่จำนวนงานที่โพสต์
             _buildStatsRow(user?.uid),
             const SizedBox(height: 24),
 
             _buildTabToggle(),
             const SizedBox(height: 20),
 
-            // แสดงรายการที่โพสต์โดย userId ปัจจุบันเท่านั้น
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: isRecipeMode
@@ -69,20 +64,28 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ==========================================
-  // WIDGET: ส่วนหัว (รูปภาพ, ชื่อ, เรตติ้ง)
+  // WIDGET: Header (สลับรูปภาพกับตัวอักษร)
   // ==========================================
-  Widget _buildProfileHeader(String name) {
+  Widget _buildProfileHeader(String name, String photoUrl, String initial) {
     return Column(
       children: [
         Stack(
           alignment: Alignment.bottomRight,
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 45,
-              backgroundColor: Colors.grey,
-              backgroundImage: NetworkImage(
-                'https://i.pravatar.cc/150?img=11', // เปลี่ยนเป็นรูปโปรไฟล์ตัวอย่างที่ดูสะอาดขึ้น
-              ),
+              backgroundColor: isRecipeMode ? Colors.orange.shade100 : Colors.blue.shade100,
+              backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+              child: photoUrl.isEmpty
+                  ? Text(
+                initial,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: isRecipeMode ? Colors.orange.shade800 : Colors.blue.shade800,
+                ),
+              )
+                  : null,
             ),
             Container(
               padding: const EdgeInsets.all(6),
@@ -98,32 +101,19 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           name,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1A2B4C),
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
         ),
         const SizedBox(height: 4),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.star, color: Colors.amber, size: 16),
-            SizedBox(width: 4),
-            Text('4.8', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text('•', style: TextStyle(color: Colors.grey)),
-            ),
-            Text('Culinary Specialist', style: TextStyle(color: Colors.grey, fontSize: 14)),
-          ],
+        const Text(
+          'Culinary Professional',
+          style: TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ],
     );
   }
 
   // ==========================================
-  // WIDGET: สถิติ (ดึงจำนวนโพสต์จริงของผู้ใช้คนนี้)
+  // WIDGET: Stats (แสดงแค่จำนวนโพสต์)
   // ==========================================
   Widget _buildStatsRow(String? userId) {
     if (userId == null) return const SizedBox();
@@ -131,35 +121,31 @@ class ProfileScreen extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(isRecipeMode ? 'recipes' : 'jobs')
-          .where('userId', isEqualTo: userId) // กรองเฉพาะของผู้ใช้ปัจจุบัน
+          .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snapshot) {
         String postCount = snapshot.hasData ? snapshot.data!.docs.length.toString() : '0';
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildStatItem(postCount, isRecipeMode ? 'Recipes' : 'Jobs'),
-            _buildStatItem('125', 'Followers'), // Static สำหรับตัวอย่าง UI
-            _buildStatItem('84', 'Following'),  // Static สำหรับตัวอย่าง UI
-          ],
+        return Center( // จัดวางไว้ตรงกลางเพราะเหลือแค่ค่าเดียว
+          child: Column(
+            children: [
+              Text(
+                postCount,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isRecipeMode ? 'Total Recipes' : 'Total Jobs Posted',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-      ],
-    );
-  }
+  // ... (ฟังก์ชัน _buildTabToggle, _buildToggleItem, _buildRecipesGrid, _buildJobsGrid, _buildStreamGrid, _buildItemCard, _buildAddNewCard เหมือนเดิม) ...
 
   Widget _buildTabToggle() {
     return Container(
@@ -200,9 +186,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Grid สำหรับแสดงโพสต์ (กรองเฉพาะของตัวเอง)
-  // ==========================================
   Widget _buildRecipesGrid(BuildContext context, String? userId) {
     return _buildStreamGrid(context, 'recipes', userId, 'New Recipe');
   }
@@ -217,7 +200,7 @@ class ProfileScreen extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(collection)
-          .where('userId', isEqualTo: userId) // *** กรองเฉพาะโพสต์ของตัวเอง ***
+          .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
