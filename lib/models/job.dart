@@ -55,20 +55,20 @@ class Job {
 
   // แปลง Object เป็น Map เพื่อบันทึกลง Firestore
   Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'recruiterName': recruiterName,
-      'companyName': companyName,
-      'title': title,
-      'jobType': jobType,
-      'salaryRange': salaryRange,
-      'location': location,
-      'description': description,
-      'requirements': requirements,
-      'logoUrl': logoUrl,
-      'imageUrl': imageUrl,
-      'likes': likes,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
+      return {
+        'userId': userId,
+        'recruiterName': recruiterName,
+        'companyName': companyName,
+        'title': title,
+        'jobType': jobType,
+        'salaryRange': salaryRange,
+        'location': location,
+        'description': description,
+        'requirements': requirements,
+        'logoUrl': logoUrl,
+        'imageUrl': imageUrl,
+        'likes': likes,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
   }
 }
