@@ -22,15 +22,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   // ข้อมูลหมวดหมู่สมมติ (คุณสามารถเพิ่มใน Firestore ได้ภายหลัง)
   final List<Map<String, String>> categories = [
-    {'name': 'Mains', 'image': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80'},
-    {'name': 'Pastry', 'image': 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&q=80'},
-    {'name': 'Drinks', 'image': 'https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=500&q=80'},
-    {'name': 'Vegan', 'image': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80'},
+    {
+      'name': 'Mains',
+      'image':
+          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
+    },
+    {
+      'name': 'Pastry',
+      'image':
+          'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&q=80',
+    },
+    {
+      'name': 'Drinks',
+      'image':
+          'https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=500&q=80',
+    },
+    {
+      'name': 'Vegan',
+      'image':
+          'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80',
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = widget.isRecipeMode ? const Color(0xFFF97316) : Colors.blue.shade600;
+    final Color primaryColor = widget.isRecipeMode
+        ? const Color(0xFFF97316)
+        : Colors.blue.shade600;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -63,7 +81,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Text(
         'Discover',
-        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1A2B4C),
+        ),
       ),
     );
   }
@@ -79,7 +101,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           suffixIcon: const Icon(Icons.tune, color: Colors.grey),
           filled: true,
           fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
@@ -107,8 +132,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
               },
               selectedColor: const Color(0xFF2D3142),
               backgroundColor: Colors.white,
-              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         },
@@ -119,11 +149,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-      child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C))),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1A2B4C),
+        ),
+      ),
     );
   }
 
-  // Grid หมวดหมู่ตามรูปตัวอย่าง
   Widget _buildCategoryGrid() {
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -140,7 +176,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            image: DecorationImage(image: NetworkImage(categories[index]['image']!), fit: BoxFit.cover),
+            image: DecorationImage(
+              image: NetworkImage(categories[index]['image']!),
+              fit: BoxFit.cover,
+            ),
           ),
           child: Container(
             decoration: BoxDecoration(
@@ -150,7 +189,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: Center(
               child: Text(
                 categories[index]['name']!,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
           ),
@@ -159,24 +202,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ดึงข้อมูล Recent Opportunities จาก Firestore
   Widget _buildRecentOpportunities() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('jobs').limit(3).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('jobs')
+          .limit(3)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
         final docs = snapshot.data!.docs;
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: docs.length,
           itemBuilder: (context, index) {
-            var data = docs[index].data() as Map<String, dynamic>;
+            final doc = docs[index]; // 🔴 ดึง document มาเก็บไว้ก่อน
+            var data = doc.data() as Map<String, dynamic>;
+
             return ListTile(
-              leading: CircleAvatar(backgroundImage: NetworkImage(data['logoUrl'] ?? data['imageUrl']), backgroundColor: Colors.grey.shade200),
-              title: Text(data['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: CircleAvatar(
+                backgroundImage: NetworkImage(
+                  data['logoUrl'] ??
+                      data['imageUrl'] ??
+                      'https://via.placeholder.com/150',
+                ),
+                backgroundColor: Colors.grey.shade200,
+              ),
+              title: Text(
+                data['title'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text(data['companyName'] ?? ''),
-              trailing: const Text('Apply', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              trailing: const Text(
+                'Apply',
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onTap: () {
                 // ดึง ID ของ document ออกมา (ใน Recent Opportunities เรามี docId อยู่แล้ว)
                 final String docId = docs[index].id;
@@ -187,7 +251,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   MaterialPageRoute(
                     builder: (context) => JobDetailScreen(
                       jobData: data,
+<<<<<<< HEAD
                       jobId: docId, // เพิ่มบรรทัดนี้เข้าไปให้ตรงตามที่ Constructor ต้องการ
+=======
+                      jobId: doc.id, // 🔴 เพิ่มการส่ง jobId ไปด้วย
+>>>>>>> refs/remotes/origin/main
                     ),
                   ),
                 );
