@@ -186,7 +186,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildTrendingSection(Color tagColor) {
     return StreamBuilder<QuerySnapshot>(
       stream: isRecipeMode
-          ? _firestoreService.getRecipes()
+          ? _firestoreService.getTrendingRecipes()
           : _firestoreService.getJobs(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

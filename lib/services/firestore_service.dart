@@ -86,6 +86,14 @@ class FirestoreService {
         .snapshots();
   }
 
+  Stream<QuerySnapshot> getTrendingRecipes() {
+    return _db
+        .collection('recipes')
+        .orderBy('rating', descending: true) // เรียงจาก rating สูงสุดไปต่ำสุด
+        .limit(5) // จำกัดแค่ 5 อันดับแรก
+        .snapshots();
+  }
+
   Future<void> addRecipeReview(
     String recipeId,
     double rating,
