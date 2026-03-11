@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import '../layout/main_layout.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,7 +24,9 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text.trim(),
       );
       // ถ้าสำเร็จ ให้เปลี่ยนหน้าไปที่หน้า Home
-      if (mounted) context.go('/');
+      if (mounted) Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MainLayout()), // หรือชื่อคลาสหน้าหลักของคุณ
+      );
       print("Login Success!");
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
