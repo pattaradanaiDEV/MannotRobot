@@ -31,8 +31,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   // สำหรับคุณสมบัติ (Dynamic Requirements)
   List<String> requirements = [
-    'Minimum 3 years in a high-volume kitchen',
-    'Food Safety Certification (ServSafe)',
+
   ];
 
   @override
@@ -71,13 +70,12 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       title: _titleController.text,
       jobType: jobTypes[jobTypeIndex],
       salaryRange:
-          "\$${_minSalaryController.text} - \$${_maxSalaryController.text}",
+          "\฿${_minSalaryController.text} - \฿${_maxSalaryController.text}",
       location: _locationController.text,
       description: _descriptionController.text,
       requirements: requirements,
-      logoUrl: "", // สามารถเพิ่ม logic อัปโหลดรูปโลโก้ได้ในอนาคต
-      imageUrl:
-          "https://images.unsplash.com/photo-1556910103-1c02745aae4d", // Mockup URL
+      logoUrl: user.photoURL ?? "", // ใช้รูปโปรไฟล์เป็นโลโก้เบื้องต้น หรือเว้นว่างไว้
+      imageUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d",
       likes: [],
     );
 
@@ -98,6 +96,12 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ดึงข้อมูล User ปัจจุบัน
+    final user = FirebaseAuth.instance.currentUser;
+    final String displayName = user?.displayName ?? "Anonymous";
+    final String photoUrl = user?.photoURL ?? "";
+    final String initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : "?";
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -116,18 +120,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {}, // สำหรับดูตัวอย่าง
-            child: Text(
-              'Preview',
-              style: TextStyle(
-                color: Colors.blue.shade600,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -140,37 +132,42 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    const CircleAvatar(
-                      backgroundImage: NetworkImage(
-                        'https://i.pravatar.cc/150?img=5',
-                      ),
-                      radius: 24,
+                    CircleAvatar(
+                      radius: 25, // ปรับขนาดให้พอดี
+                      backgroundColor: Colors.blue.shade100,
+                      backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                      child: photoUrl.isEmpty
+                          ? Text(
+                        initial,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      )
+                          : null,
                     ),
                     Container(
+                      padding: const EdgeInsets.all(2),
                       decoration: const BoxDecoration(
                         color: Colors.blue,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
-                        size: 12,
-                      ),
+                      child: const Icon(Icons.check, color: Colors.white, size: 10),
                     ),
                   ],
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sarah Jenkins',
-                      style: TextStyle(
+                      displayName, // แสดงชื่อจริงจาก Firebase
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    Text(
+                    const Text(
                       'Posting publicly as Recruiter',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
@@ -212,7 +209,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                   flex: 2,
                   child: _buildTextField(
                     'Min',
-                    prefix: '\$ ',
+                    prefix: '฿ ',
                     controller: _minSalaryController,
                   ),
                 ),
@@ -224,12 +221,12 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                   flex: 2,
                   child: _buildTextField(
                     'Max',
-                    prefix: '\$ ',
+                    prefix: '฿ ',
                     controller: _maxSalaryController,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(flex: 2, child: _buildDropdown('/ year')),
+                Expanded(flex: 2, child: _buildDropdown('/ month')),
               ],
             ),
             const SizedBox(height: 20),
@@ -265,48 +262,65 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
             _buildSectionTitle('Qualifications & Requirements'),
             ...requirements.asMap().entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.blue.shade600,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          entry.value,
-                          style: TextStyle(
-                            color: Colors.grey.shade800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline,
-                          color: Colors.grey.shade400,
+                  (entry) {
+                int index = entry.key;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.blue.shade600,
                           size: 20,
                         ),
-                        onPressed: () =>
-                            setState(() => requirements.removeAt(entry.key)),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: TextEditingController.fromValue(
+                              TextEditingValue(
+                                text: entry.value,
+                                selection: TextSelection.collapsed(offset: entry.value.length),
+                              ),
+                            ),
+                            onChanged: (newValue) {
+                              // อัปเดตค่าใน List เมื่อมีการพิมพ์
+                              requirements[index] = newValue;
+                            },
+                            style: TextStyle(
+                              color: Colors.grey.shade800,
+                              fontSize: 13,
+                            ),
+                            decoration: const InputDecoration(
+                              hintText: 'Enter requirement...',
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Colors.grey.shade400,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => requirements.removeAt(index)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            ),
+                );
+              },
+            ).toList(),
+
             TextButton.icon(
               onPressed: () =>
-                  setState(() => requirements.add('New Requirement')),
+                  setState(() => requirements.add('')), // เพิ่มเป็นค่าว่างเพื่อให้ User พิมพ์เอง
               icon: Icon(
                 Icons.add_circle_outline,
                 color: Colors.blue.shade600,
@@ -367,11 +381,11 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   }
 
   Widget _buildTextField(
-    String hint, {
-    String? prefix,
-    IconData? icon,
-    TextEditingController? controller,
-  }) {
+      String hint, {
+        String? prefix,
+        IconData? icon,
+        TextEditingController? controller,
+      }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -381,13 +395,23 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
       ),
       child: TextField(
         controller: controller,
+        textAlignVertical: TextAlignVertical.center, // จัดตัวหนังสือให้อยู่กลางแนวตั้ง
         decoration: InputDecoration(
           hintText: hint,
           border: InputBorder.none,
           prefixText: prefix,
+          // ปรับตรงนี้ครับ
           prefixIcon: icon != null
-              ? Icon(icon, color: Colors.grey.shade500, size: 20)
+              ? Padding(
+            padding: const EdgeInsets.only(right: 12.0), // เพิ่มช่องไฟขวาของ Icon
+            child: Icon(icon, color: Colors.grey.shade500, size: 20),
+          )
               : null,
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14), // เพิ่มพื้นที่บน-ล่าง
         ),
       ),
     );

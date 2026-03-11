@@ -25,22 +25,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
     {
       'name': 'Mains',
       'image':
-          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
     },
     {
       'name': 'Pastry',
       'image':
-          'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&q=80',
+      'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&q=80',
     },
     {
       'name': 'Drinks',
       'image':
-          'https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=500&q=80',
+      'https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=500&q=80',
     },
     {
       'name': 'Vegan',
       'image':
-          'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80',
+      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80',
     },
   ];
 
@@ -251,11 +251,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   MaterialPageRoute(
                     builder: (context) => JobDetailScreen(
                       jobData: data,
-<<<<<<< HEAD
-                      jobId: docId, // เพิ่มบรรทัดนี้เข้าไปให้ตรงตามที่ Constructor ต้องการ
-=======
                       jobId: doc.id, // 🔴 เพิ่มการส่ง jobId ไปด้วย
->>>>>>> refs/remotes/origin/main
                     ),
                   ),
                 );
