@@ -82,19 +82,11 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isRecipeMode ? 'Trending Now' : 'Featured Jobs',
+                    isRecipeMode ? 'Trending Now' : 'Recent Jobs',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1A2B4C),
-                    ),
-                  ),
-                  Text(
-                    'View all',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: primaryColor,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

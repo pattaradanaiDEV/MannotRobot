@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../post/post_modal.dart';
 import '/login.dart';
+import '/screens/home/job_detail_screen.dart';
+import '/screens/home/recipe_detail_screen.dart';
+
 
 class ProfileScreen extends StatelessWidget {
   final bool isRecipeMode;
@@ -38,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Color(0xFF1A2B4C)),
-            onPressed: () => _showSettingsModal(context), // เรียกใช้ฟังก์ชันที่เราเพิ่งสร้าง
+            onPressed: () => _showSettingsModal(context),
           ),
         ],
       ),
@@ -49,7 +52,6 @@ class ProfileScreen extends StatelessWidget {
             _buildProfileHeader(displayName, photoUrl, initial),
             const SizedBox(height: 24),
 
-            // สถิติ: เหลือแค่จำนวนงานที่โพสต์
             _buildStatsRow(user?.uid),
             const SizedBox(height: 24),
 
@@ -70,9 +72,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Header (สลับรูปภาพกับตัวอักษร)
-  // ==========================================
+  // --- Header Section ---
   Widget _buildProfileHeader(String name, String photoUrl, String initial) {
     return Column(
       children: [
@@ -119,12 +119,9 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Stats (แสดงแค่จำนวนโพสต์)
-  // ==========================================
+  // --- Stats Section ---
   Widget _buildStatsRow(String? userId) {
     if (userId == null) return const SizedBox();
-
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(isRecipeMode ? 'recipes' : 'jobs')
@@ -132,8 +129,7 @@ class ProfileScreen extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         String postCount = snapshot.hasData ? snapshot.data!.docs.length.toString() : '0';
-
-        return Center( // จัดวางไว้ตรงกลางเพราะเหลือแค่ค่าเดียว
+        return Center(
           child: Column(
             children: [
               Text(
@@ -152,8 +148,86 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ... (ฟังก์ชัน _buildTabToggle, _buildToggleItem, _buildRecipesGrid, _buildJobsGrid, _buildStreamGrid, _buildItemCard, _buildAddNewCard เหมือนเดิม) ...
+  // --- Grid Sections ---
+  Widget _buildRecipesGrid(BuildContext context, String? userId) {
+    return _buildStreamGrid(context, 'recipes', userId, 'New Recipe');
+  }
 
+  Widget _buildJobsGrid(BuildContext context, String? userId) {
+    return _buildStreamGrid(context, 'jobs', userId, 'New Job');
+  }
+
+  Widget _buildStreamGrid(BuildContext context, String collection, String? userId, String addLabel) {
+    if (userId == null) return const Center(child: Text("กรุณาเข้าสู่ระบบ"));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(collection)
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: docs.length + 1,
+          itemBuilder: (context, index) {
+            if (index == docs.length) return _buildAddNewCard(context, addLabel);
+
+            var data = docs[index].data() as Map<String, dynamic>;
+            var docId = docs[index].id;
+
+            return GestureDetector(
+              onTap: () {
+                if (collection == 'jobs') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => JobDetailScreen(
+                        jobData: data,
+                        jobId: docId,
+                      ),
+                    ),
+                  );
+                }
+                else if (collection == 'recipes') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RecipeDetailScreen( // ตรวจสอบชื่อคลาสหน้ารายละเอียดสูตรอาหารของคุณ
+                        recipeData: data,
+                        recipeId: docId,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: _buildItemCard(
+                title: data['title'] ?? 'No Title',
+                subTitle: collection == 'recipes'
+                    ? '${data['timeMins'] ?? 0}m'
+                    : (data['jobType'] ?? 'Full-time'),
+                imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- UI Components ---
   Widget _buildTabToggle() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -193,54 +267,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecipesGrid(BuildContext context, String? userId) {
-    return _buildStreamGrid(context, 'recipes', userId, 'New Recipe');
-  }
-
-  Widget _buildJobsGrid(BuildContext context, String? userId) {
-    return _buildStreamGrid(context, 'jobs', userId, 'New Job');
-  }
-
-  Widget _buildStreamGrid(BuildContext context, String collection, String? userId, String addLabel) {
-    if (userId == null) return const Center(child: Text("กรุณาเข้าสู่ระบบ"));
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection(collection)
-          .where('userId', isEqualTo: userId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final docs = snapshot.data?.docs ?? [];
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.75,
-          ),
-          itemCount: docs.length + 1,
-          itemBuilder: (context, index) {
-            if (index == docs.length) return _buildAddNewCard(context, addLabel);
-
-            var data = docs[index].data() as Map<String, dynamic>;
-            return _buildItemCard(
-              title: data['title'] ?? 'No Title',
-              subTitle: collection == 'recipes' ? '${data['timeMins'] ?? 0}m' : (data['jobType'] ?? 'Full-time'),
-              imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildItemCard({required String title, required String subTitle, required String imageUrl}) {
     return Container(
       decoration: BoxDecoration(
@@ -252,22 +278,11 @@ class ProfileScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Image.network(imageUrl, width: double.infinity, fit: BoxFit.cover),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.edit, size: 14, color: Color(0xFF1A2B4C)),
-                  ),
-                ),
-              ],
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(imageUrl, width: double.infinity, fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)),
+              ),
             ),
           ),
           Padding(
@@ -315,52 +330,27 @@ class ProfileScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // ให้ Modal สูงเท่ากับเนื้อหา
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 20),
-              const Text(
-                'Account Settings',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A2B4C),
-                ),
-              ),
+              const Text('Account Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C))),
               const SizedBox(height: 20),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.edit_outlined, color: Colors.black87),
-                title: const Text('Edit Profile'),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                title: const Text(
-                  'Log out',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
-                ),
+                title: const Text('Log out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
                 onTap: () async {
                   await FirebaseAuth.instance.signOut();
                   if (context.mounted) {
-                    // ล้างทุกหน้าทิ้ง แล้วเริ่มใหม่ที่ LoginPage
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => const LoginPage()),
-                          (route) => false, // บรรทัดนี้คือการสั่งลบประวัติหน้าจอทั้งหมด
+                          (route) => false,
                     );
                   }
                 },

@@ -119,44 +119,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // Divider
-              const Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Text(
-                      'Or continue with',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              // Google Login
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.g_mobiledata,
-                  size: 30,
-                ), // หรือใช้รูป Logo Google
-                label: const Text(
-                  'Sign in with Google',
-                  style: TextStyle(color: Colors.black87),
-                ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 55),
-                  side: const BorderSide(color: Colors.black12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
 
               // Sign Up
               Row(
