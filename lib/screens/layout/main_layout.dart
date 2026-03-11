@@ -54,7 +54,6 @@ class _MainLayoutState extends State<MainLayout> {
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
-            side: const BorderSide(color: Colors.white, width: 4),
           ),
           onPressed: () {
             // เรียก Dialog หรือ Modal สำหรับโพสต์ขึ้นมา

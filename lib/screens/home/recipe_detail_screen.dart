@@ -225,8 +225,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     String rating = (widget.recipeData['rating'] ?? 0.0).toString();
     String difficulty = widget.recipeData['difficulty'] ?? 'Medium';
 
+    // 🔴 ดึงข้อมูล tags ออกมาจาก Firebase
+    List<String> tags =
+        (widget.recipeData['tags'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
     return Scaffold(
-      // 🔴 1. เปลี่ยน Scaffold เป็นสีขาว เพื่อไม่ให้มีสีมืดๆ ทะลุช่องรอยต่อขึ้นมา
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
@@ -237,7 +243,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
-            // 🔴 2. AppBar สีขาว เวลาย่อส่วน (เลื่อนขึ้นสุด) จะกลืนไปกับเนื้อหาอย่างสวยงาม
             backgroundColor: Colors.white,
             leading: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -254,7 +259,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(30),
-              // 🔴 3. พระเอกของการยาแนว! ดันส่วนโค้งลงมา 1 พิกเซล เพื่อให้ปิดรอยแตกให้สนิท 100%
               child: Transform.translate(
                 offset: const Offset(0, 1),
                 child: Container(
@@ -274,7 +278,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           // 2. เนื้อหาหลัก
           SliverToBoxAdapter(
             child: Container(
-              // 🔴 4. ลบ transform ออก กลายเป็นกล่องสีขาวธรรมดาที่ต่อสนิทกับขอบโค้งเป๊ะๆ
               color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.only(
@@ -359,7 +362,20 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // 🔴 เพิ่มส่วนแสดง Tags
+                    if (tags.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 8.0, // ระยะห่างแนวนอนระหว่าง tag
+                        runSpacing: 8.0, // ระยะห่างแนวตั้งเวลามันตกบรรทัด
+                        children: tags
+                            .map((tag) => _buildDisplayTag(tag))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
                     // Row สำหรับ time,rating,defficulty
                     Row(
                       children: [
@@ -374,9 +390,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         _buildStatCard(Icons.bar_chart, difficulty),
                       ],
                     ),
-                    const SizedBox(
-                      height: 36,
-                    ), // เพิ่มระยะห่างก่อนขึ้น Section ใหม่
+                    const SizedBox(height: 36),
+
                     // ส่วนผสม (Ingredients)
                     const Text(
                       'Ingredients',
@@ -449,21 +464,18 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     double.tryParse(rating) ?? 0.0;
 
                                 if (index < numRating.floor()) {
-                                  // 1. ถ้าตำแหน่งดาวน้อยกว่าคะแนนเต็ม (เช่น คะแนน 4.5 ดาวที่ 1-4 จะทึบ)
                                   return Icon(
                                     Icons.star,
                                     color: Colors.orange.shade400,
                                     size: 20,
                                   );
                                 } else if (index < numRating) {
-                                  // 2. ถ้ามีเศษทศนิยม (เช่น 4.5 ดาวที่ 5 จะเป็นครึ่งดวง)
                                   return Icon(
                                     Icons.star_half,
                                     color: Colors.orange.shade400,
                                     size: 20,
                                   );
                                 } else {
-                                  // 3. ดาวที่เหลือให้เป็นดาวโปร่ง (ดาวเปล่า)
                                   return Icon(
                                     Icons.star_border,
                                     color: Colors.orange.shade400,
@@ -511,7 +523,30 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // Widget สำหรับแสดง ui time,rating,difficulty
+  // =========================================
+  // WIDGET HELPERS
+  // =========================================
+
+  // 🔴 Widget สำหรับแสดง Tag แต่ละอัน
+  Widget _buildDisplayTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.shade100),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.orange.shade800,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatCard(
     IconData icon,
     String value, {

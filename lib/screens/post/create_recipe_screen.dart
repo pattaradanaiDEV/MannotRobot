@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/firestore_service.dart';
 import '../../models/recipe.dart';
 
@@ -14,33 +16,74 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
   // State variables
   int difficultyIndex = 0; // 0: Easy, 1: Medium, 2: Hard
 
+  // 🔴 เพิ่มตัวแปรสำหรับเก็บหน่วยเวลาที่เลือก
+  String _selectedTimeUnit = 'Mins'; // ค่าเริ่มต้นเป็น Mins
+
   // Services & Controllers
   final FirestoreService _firestoreService = FirestoreService();
-
-  // 🔴 ดึงข้อมูล user ปัจจุบันมาเก็บไว้เป็นตัวแปรหลักของ Class เพื่อให้ใช้ได้ทุกที่
   final user = FirebaseAuth.instance.currentUser;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
 
   // Dynamic Controllers for Ingredients
-  final List<TextEditingController> _qtyControllers = [
-    TextEditingController(),
-    TextEditingController(),
-  ];
+  final List<TextEditingController> _qtyControllers = [TextEditingController()];
   final List<TextEditingController> _nameControllers = [
-    TextEditingController(),
     TextEditingController(),
   ];
 
   // Dynamic Controllers for Instructions
   final List<TextEditingController> _instructionControllers = [
-    TextEditingController(), // เริ่มต้นให้มี 1 ขั้นตอนเสมอ
+    TextEditingController(),
   ];
+
+  // รายการ Tags อาหารทั้งหมดในโลก (สามารถเพิ่มลดได้)
+  final List<String> _availableTags = [
+    "Breakfast",
+    "Lunch",
+    "Dinner",
+    "Dessert",
+    "Snack",
+    "Beverage",
+    "Thai",
+    "Japanese",
+    "Italian",
+    "Mexican",
+    "Chinese",
+    "Indian",
+    "Korean",
+    "Vegan",
+    "Vegetarian",
+    "Keto",
+    "Gluten-Free",
+    "Low-Carb",
+    "High-Protein",
+    "Healthy",
+    "Fast Food",
+    "Street Food",
+    "Seafood",
+    "Chicken",
+    "Beef",
+    "Pork",
+    "Spicy",
+    "Sweet",
+    "Savory",
+    "Baking",
+    "Grilling",
+    "Fried",
+    "Soup",
+    "Salad",
+  ];
+
+  // เก็บ Tags ที่ผู้ใช้กดเลือก
+  final List<String> _selectedTags = [];
+
+  // ตัวแปรเก็บไฟล์รูปภาพที่เลือกจากเครื่อง
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
-    // ล้างข้อมูลเพื่อประหยัด Memory เมื่อปิดหน้าจอ
     _titleController.dispose();
     _timeController.dispose();
     for (var controller in _qtyControllers) {
@@ -55,9 +98,34 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     super.dispose();
   }
 
-  // ฟังก์ชันสำหรับส่งข้อมูลขึ้น Firebase
+  void _removeIngredient(int index) {
+    setState(() {
+      _qtyControllers[index].dispose();
+      _nameControllers[index].dispose();
+      _qtyControllers.removeAt(index);
+      _nameControllers.removeAt(index);
+    });
+  }
+
+  void _removeInstruction(int index) {
+    setState(() {
+      _instructionControllers[index].dispose();
+      _instructionControllers.removeAt(index);
+    });
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _handlePostRecipe() async {
-    // ตรวจสอบว่ามีการล็อกอินและกรอกชื่อสูตรหรือไม่
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("กรุณาเข้าสู่ระบบก่อนโพสต์")),
@@ -71,7 +139,13 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       return;
     }
 
-    // รวบรวมรายชื่อวัตถุดิบจาก Dynamic Controllers
+    // โชว์ Loading ระหว่างเซฟ (ขั้นตอนนี้อาจใช้เวลาหลายวินาทีเพราะต้องอัปโหลดรูป)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     List<Map<String, String>> ingredientList = [];
     for (int i = 0; i < _qtyControllers.length; i++) {
       if (_nameControllers[i].text.trim().isNotEmpty) {
@@ -82,7 +156,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       }
     }
 
-    // รวบรวมขั้นตอนวิธีทำจาก Dynamic Controllers
     List<String> instructionList = [];
     for (var controller in _instructionControllers) {
       if (controller.text.trim().isNotEmpty) {
@@ -90,9 +163,31 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       }
     }
 
-    // สร้างก้อนข้อมูล Recipe Object
+    int inputTime = int.tryParse(_timeController.text.trim()) ?? 0;
+    int totalMins = _selectedTimeUnit == 'Hours' ? inputTime * 60 : inputTime;
+
+    // รูปเริ่มต้น (สลัดผัก) ถ้าผู้ใช้ไม่ได้เลือกรูป
+    String finalImageUrl =
+        "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80";
+
+    // 🔴 เพิ่มการเรียกใช้ฟังก์ชันอัปโหลดรูปตรงนี้!
+    if (_imageFile != null) {
+      String? uploadedUrl = await _firestoreService.uploadImage(_imageFile!);
+      if (uploadedUrl != null) {
+        finalImageUrl = uploadedUrl; // เปลี่ยนไปใช้ URL ที่อัปโหลดสำเร็จ
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("อัปโหลดรูปไม่สำเร็จ ใช้รูปเริ่มต้นแทน"),
+            ),
+          );
+        }
+      }
+    }
+
     Recipe newRecipe = Recipe(
-      userId: user!.uid, // ใส่ ! เพราะเช็ก null ไปแล้วด้านบน
+      userId: user!.uid,
       authorName: user!.displayName ?? "Anonymous Chef",
       title: _titleController.text.trim(),
       difficulty: difficultyIndex == 0
@@ -100,25 +195,25 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
           : difficultyIndex == 1
           ? "Medium"
           : "Hard",
-      timeMins: int.tryParse(_timeController.text) ?? 0,
-      tags: ["Thai", "Dinner"], // ส่วนนี้สามารถพัฒนาต่อให้เลือก Tag ได้จริง
+      timeMins: totalMins,
+      tags: _selectedTags,
       ingredients: ingredientList,
       instructions: instructionList,
-      imageUrl:
-          "https://images.unsplash.com/photo-1512621776951-a57141f2eefd", // Mockup URL
+      imageUrl: finalImageUrl, // 🔴 ส่ง URL รูปใหม่ (หรือรูปเริ่มต้น) เข้าไป
       likes: [],
     );
 
     try {
-      // เรียกใช้ Service เพื่อบันทึกลง Firestore
       await _firestoreService.addRecipe(newRecipe);
       if (mounted) {
-        Navigator.pop(context); // โพสต์สำเร็จให้ปิดหน้าจอนี้
+        Navigator.pop(context); // ปิด Loading
+        Navigator.pop(context); // ปิดหน้า Post
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("โพสต์สูตรอาหารสำเร็จ!")));
       }
     } catch (e) {
+      if (mounted) Navigator.pop(context); // ปิด Loading ก่อนโชว์ Error
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("เกิดข้อผิดพลาด: $e")));
@@ -127,6 +222,12 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String displayName = user?.displayName ?? user?.email ?? 'Chef';
+    final String photoUrl = user?.photoURL ?? '';
+    final String initial = displayName.isNotEmpty
+        ? displayName[0].toUpperCase()
+        : '?';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -176,21 +277,31 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Info
             Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: NetworkImage(
-                    user?.photoURL ?? 'https://i.pravatar.cc/150?img=5',
-                  ),
+                  backgroundColor: Colors.orange.shade100,
                   radius: 24,
+                  backgroundImage: photoUrl.isNotEmpty
+                      ? NetworkImage(photoUrl)
+                      : null,
+                  child: photoUrl.isEmpty
+                      ? Text(
+                          initial,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade800,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user?.displayName ?? 'Chef',
+                      displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -206,7 +317,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Recipe Name Input
             TextField(
               controller: _titleController,
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -220,14 +330,42 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 border: InputBorder.none,
               ),
             ),
+            const SizedBox(height: 16),
 
-            // Tags (Static for now)
-            Row(
-              children: [
-                _buildTag('Thai', true),
-                _buildTag('Dinner', false),
-                _buildTag('+', false, isAdd: true),
-              ],
+            _buildSectionTitle('Select Tags'),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 4.0,
+              children: _availableTags.map((tag) {
+                final isSelected = _selectedTags.contains(tag);
+                return FilterChip(
+                  label: Text(
+                    tag,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: const Color(0xFFF97316),
+                  backgroundColor: Colors.grey.shade100,
+                  checkmarkColor: Colors.white,
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedTags.add(tag);
+                      } else {
+                        _selectedTags.remove(tag);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
             ),
             const SizedBox(height: 24),
 
@@ -259,13 +397,25 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildDropdown('Mins')),
+                // 🔴 เปลี่ยนเป็นการใช้ _buildDropdown แบบสามารถเลือกค่าได้
+                Expanded(
+                  child: _buildDropdown(
+                    value: _selectedTimeUnit,
+                    items: ['Mins', 'Hours'],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedTimeUnit = newValue;
+                        });
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
 
             _buildSectionTitle('Ingredients', isBold: true),
-            // รายการวัตถุดิบแบบ Dynamic
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -276,7 +426,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        flex: 1,
+                        flex: 2,
                         child: _buildTextField(
                           'Qty',
                           controller: _qtyControllers[index],
@@ -284,18 +434,27 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        flex: 3,
+                        flex: 4,
                         child: _buildTextField(
                           'Ingredient Name',
                           controller: _nameControllers[index],
                         ),
                       ),
+                      if (_qtyControllers.length > 1)
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: Colors.red.shade300,
+                          ),
+                          onPressed: () => _removeIngredient(index),
+                        )
+                      else
+                        const SizedBox(width: 48),
                     ],
                   ),
                 );
               },
             ),
-            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -325,7 +484,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
             const SizedBox(height: 32),
 
             _buildSectionTitle('Instructions', isBold: true),
-            // รายการวิธีทำแบบ Dynamic
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -336,7 +494,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ตัวเลข Step
                       Container(
                         margin: const EdgeInsets.only(top: 8, right: 12),
                         width: 28,
@@ -356,7 +513,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                           ),
                         ),
                       ),
-                      // ช่องกรอกข้อความ
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
@@ -365,7 +521,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                           ),
                           child: TextField(
                             controller: _instructionControllers[index],
-                            maxLines: null, // ยืดหยุ่นหลายบรรทัดได้
+                            maxLines: null,
                             decoration: InputDecoration(
                               hintText: 'Describe step ${index + 1}...',
                               border: InputBorder.none,
@@ -378,13 +534,23 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                           ),
                         ),
                       ),
+                      if (_instructionControllers.length > 1)
+                        IconButton(
+                          padding: const EdgeInsets.only(top: 12, left: 8),
+                          alignment: Alignment.topCenter,
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: Colors.red.shade300,
+                          ),
+                          onPressed: () => _removeInstruction(index),
+                        )
+                      else
+                        const SizedBox(width: 48),
                     ],
                   ),
                 );
               },
             ),
-            const SizedBox(height: 8),
-            // ปุ่ม Add Step
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -413,31 +579,65 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
             const SizedBox(height: 32),
 
             _buildSectionTitle('Photos', isBold: true),
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.shade300,
-                  style: BorderStyle.solid,
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    style: BorderStyle.solid,
+                  ),
+                  image: _imageFile != null
+                      ? DecorationImage(
+                          image: FileImage(_imageFile!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_photo_alternate_outlined,
-                    color: Colors.grey.shade600,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap to upload photos',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
+                child: _imageFile == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: Colors.grey.shade500,
+                            size: 40,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap to upload photos',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Stack(
+                        children: [
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _imageFile = null),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: 40),
@@ -451,34 +651,13 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
 
   Widget _buildSectionTitle(String title, {bool isBold = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: isBold ? 16 : 12,
+          fontSize: isBold ? 18 : 14,
           fontWeight: FontWeight.bold,
           color: isBold ? const Color(0xFF1A2B4C) : Colors.grey.shade600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTag(String label, bool isSelected, {bool isAdd = false}) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.orange.shade50 : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isAdd ? Colors.grey.shade400 : Colors.transparent,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? const Color(0xFFF97316) : Colors.grey.shade700,
-          fontWeight: FontWeight.bold,
         ),
       ),
     );
@@ -526,7 +705,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
@@ -534,16 +713,34 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        textAlign: TextAlign.left,
+        textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           hintText: hint,
           border: InputBorder.none,
-          suffixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+          ), // ดันบนล่างให้สมดุล
+          // ควบคุมขนาดไอคอนให้ไม่ไปดันข้อความให้เบี้ยว
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
+          suffixIcon: icon != null
+              ? Icon(icon, color: Colors.grey, size: 22)
+              : null,
         ),
       ),
     );
   }
 
-  Widget _buildDropdown(String value) {
+  // 🔴 ปรับ _buildDropdown ให้รับค่ามาเปลี่ยนสถานะได้ (Dynamic)
+  Widget _buildDropdown({
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -554,10 +751,10 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          items: [
-            value,
-          ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-          onChanged: (_) {},
+          items: items
+              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+              .toList(),
+          onChanged: onChanged,
         ),
       ),
     );

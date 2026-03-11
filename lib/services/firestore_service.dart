@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // โหลด API Key
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
@@ -8,15 +12,47 @@ class FirestoreService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ==========================================
+  // --- ส่วนจัดการไฟล์ (อัปโหลดรูปผ่าน ImgBB) ---
+  // ==========================================
+  Future<String?> uploadImage(File imageFile) async {
+    // ดึง API Key จากไฟล์ .env
+    final String imgbbApiKey = dotenv.env['IMGBB_API_KEY'] ?? '';
+    if (imgbbApiKey.isEmpty) {
+      print("Error: ไม่พบ IMGBB_API_KEY ในไฟล์ .env");
+      return null;
+    }
+
+    final Uri apiUrl = Uri.parse(
+      'https://api.imgbb.com/1/upload?key=$imgbbApiKey',
+    );
+
+    try {
+      List<int> imageBytes = await imageFile.readAsBytes();
+      String base64Image = base64Encode(imageBytes);
+
+      var response = await http.post(apiUrl, body: {'image': base64Image});
+
+      if (response.statusCode == 200) {
+        var jsonResponse = jsonDecode(response.body);
+        return jsonResponse['data']['url']; // ได้ URL รูปของจริงมาแล้ว!
+      } else {
+        print('Upload failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  // ==========================================
   // --- ส่วนของ Recipes ---
   // ==========================================
 
-  // บันทึกสูตรอาหารใหม่
   Future<void> addRecipe(Recipe recipe) async {
     await _db.collection('recipes').add(recipe.toMap());
   }
 
-  // ดึงข้อมูลสูตรอาหารทั้งหมดแบบ Real-time (เรียงจากใหม่ไปเก่า)
   Stream<QuerySnapshot> getRecipes() {
     return _db
         .collection('recipes')
@@ -24,7 +60,6 @@ class FirestoreService {
         .snapshots();
   }
 
-  // อัปเดตการกด Like (ใช้ ArrayUnion เพื่อเพิ่ม User ID เข้าไปใน List)
   Future<void> toggleRecipeLike(
     String recipeId,
     String userId,
@@ -42,36 +77,15 @@ class FirestoreService {
     }
   }
 
-  // ==========================================
-  // --- ส่วนของ Jobs ---
-  // ==========================================
-
-  // บันทึกโพสต์งานใหม่
-  Future<void> addJob(Job job) async {
-    await _db.collection('jobs').add(job.toMap());
-  }
-
-  // ดึงข้อมูลงานทั้งหมดแบบ Real-time (เรียงจากใหม่ไปเก่า)
-  Stream<QuerySnapshot> getJobs() {
-    return _db
-        .collection('jobs')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
-
   Stream<QuerySnapshot> getRecipeReviews(String recipeId) {
     return _db
         .collection('recipes')
         .doc(recipeId)
         .collection('reviews')
-        .orderBy(
-          'createdAt',
-          descending: true,
-        ) // เรียงจากคอมเมนต์ใหม่สุดไปเก่าสุด
+        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
-  // 2. เพิ่มรีวิวใหม่ และอัปเดตคะแนนเฉลี่ยของสูตรอาหาร
   Future<void> addRecipeReview(
     String recipeId,
     double rating,
@@ -80,20 +94,17 @@ class FirestoreService {
     final user = _auth.currentUser;
     if (user == null) throw Exception('กรุณาเข้าสู่ระบบก่อนรีวิว');
 
-    // 🔴 เพิ่มกฎ: เช็กว่าผู้ใช้คนนี้เคยรีวิวสูตรอาหารนี้ไปแล้วหรือยัง
     QuerySnapshot existingReview = await _db
         .collection('recipes')
         .doc(recipeId)
         .collection('reviews')
-        .where('userId', isEqualTo: user.uid) // ค้นหาด้วย UID ของผู้ใช้
+        .where('userId', isEqualTo: user.uid)
         .get();
 
-    // ถ้ามีข้อมูลกลับมา แปลว่าเคยรีวิวแล้ว ให้เตะออกและโยน Error กลับไป
     if (existingReview.docs.isNotEmpty) {
       throw Exception('คุณได้รีวิวเมนูนี้ไปแล้วครับ');
     }
 
-    // ข้อมูลรีวิวที่จะบันทึก
     final reviewData = {
       'userId': user.uid,
       'userName': user.displayName ?? user.email ?? 'Anonymous',
@@ -103,15 +114,12 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     };
 
-    // บันทึกลงใน Subcollection 'reviews' ของสูตรอาหารนี้
     await _db
         .collection('recipes')
         .doc(recipeId)
         .collection('reviews')
         .add(reviewData);
 
-    // --- อัปเดตคะแนนเฉลี่ย (Average Rating) ของสูตรอาหาร ---
-    // ดึงรีวิวทั้งหมดมาคำนวณหาค่าเฉลี่ยใหม่
     QuerySnapshot reviewsSnapshot = await _db
         .collection('recipes')
         .doc(recipeId)
@@ -125,10 +133,24 @@ class FirestoreService {
       }
       double averageRating = totalRating / reviewsSnapshot.docs.length;
 
-      // อัปเดตฟิลด์ rating ในสูตรอาหารหลัก (ปัดทศนิยม 1 ตำแหน่ง)
       await _db.collection('recipes').doc(recipeId).update({
         'rating': double.parse(averageRating.toStringAsFixed(1)),
       });
     }
+  }
+
+  // ==========================================
+  // --- ส่วนของ Jobs ---
+  // ==========================================
+
+  Future<void> addJob(Job job) async {
+    await _db.collection('jobs').add(job.toMap());
+  }
+
+  Stream<QuerySnapshot> getJobs() {
+    return _db
+        .collection('jobs')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 }

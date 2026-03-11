@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // 🔴 1. เพิ่ม Import สำหรับ dotenv
 
 import 'firebase_options.dart';
 import 'app_state.dart'; // ไฟล์จัดการสถานะ Login ของคุณ
@@ -11,6 +12,9 @@ import 'login.dart'; // ดึงหน้า Login เดิมของคุ�
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔴 2. สั่งให้แอปโหลด API Key จากไฟล์ .env ก่อนเริ่มทำอย่างอื่น
+  await dotenv.load(fileName: ".env");
 
   // 1. Initialized Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -28,23 +32,17 @@ void main() async {
 final _router = GoRouter(
   initialLocation: '/',
   redirect: (context, state) {
-    // ดึงสถานะจาก app_state.dart
     final appState = Provider.of<ApplicationState>(context, listen: false);
     final bool loggedIn = appState.loggedIn;
     final bool isLoggingIn = state.matchedLocation == '/login';
 
-    // ถ้ายังไม่ Login และไม่ได้อยู่หน้า Login -> เด้งไปหน้า Login
     if (!loggedIn && !isLoggingIn) return '/login';
-    // ถ้า Login แล้ว แต่เผลอไปกดเข้าหน้า Login -> เด้งกลับมาหน้า Home
     if (loggedIn && isLoggingIn) return '/';
 
-    return null; // ปล่อยผ่าน
+    return null;
   },
   routes: [
-    // หน้าหลัก
     GoRoute(path: '/', builder: (context, state) => const MainLayout()),
-
-    // หน้า Login (แก้ให้เรียกใช้ Custom UI ของเรา)
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
   ],
 );
@@ -54,7 +52,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 4. เปลี่ยนมาใช้ MaterialApp.router เพื่อใช้ GoRouter
     return MaterialApp.router(
       title: 'Culinary Connect',
       debugShowCheckedModeBanner: false,
@@ -63,7 +60,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         useMaterial3: true,
       ),
-      routerConfig: _router, // เรียกใช้ Router ที่เราสร้างไว้
+      routerConfig: _router,
     );
   }
 }
