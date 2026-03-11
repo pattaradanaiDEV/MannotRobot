@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import '../screens/layout/main_layout.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,15 +24,19 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // ถ้าสำเร็จ ให้เปลี่ยนหน้าไปที่หน้า Home
-      if (mounted) context.go('/');
-      print("Login Success!");
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? "Login Failed")));
+
+      if (mounted) {
+        // ใช้ pushAndRemoveUntil เพื่อให้หน้า Home เป็นหน้าแรกจริงๆ
+        // และป้องกัน User กด Back กลับมาหน้า Login ได้อีก
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainLayout()),
+              (route) => false,
+        );
+      }
+     } catch (e) {
+
+     }
     }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,44 +119,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // Divider
-              const Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Text(
-                      'Or continue with',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              // Google Login
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.g_mobiledata,
-                  size: 30,
-                ), // หรือใช้รูป Logo Google
-                label: const Text(
-                  'Sign in with Google',
-                  style: TextStyle(color: Colors.black87),
-                ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 55),
-                  side: const BorderSide(color: Colors.black12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
 
               // Sign Up
               Row(
