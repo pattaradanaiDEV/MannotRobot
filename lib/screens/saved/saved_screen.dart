@@ -55,7 +55,7 @@ class _SavedScreenState extends State<SavedScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               children: [
@@ -68,7 +68,7 @@ class _SavedScreenState extends State<SavedScreen> {
                         color: widget.isRecipeMode
                             ? Colors.white
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
                         child: Text(
@@ -93,7 +93,7 @@ class _SavedScreenState extends State<SavedScreen> {
                         color: !widget.isRecipeMode
                             ? Colors.white
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
                         child: Text(
