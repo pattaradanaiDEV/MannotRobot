@@ -43,11 +43,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     ingredients = widget.recipeData['ingredients'] ?? [];
 
     // 3. ดึงข้อความวิธีทำ แล้วแยกบรรทัด (\n) เป็นข้อๆ
-    String rawInstructions = widget.recipeData['instructions'] ?? '';
-    instructions = rawInstructions
-        .split('\n')
-        .where((s) => s.trim().isNotEmpty)
-        .toList();
+    var rawInst = widget.recipeData['instructions'];
+    if (rawInst is List) {
+      instructions = List<String>.from(rawInst);
+    } else if (rawInst is String) {
+      instructions = rawInst
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
+    } else {
+      instructions = [];
+    }
   }
 
   // ฟังก์ชันกดหัวใจ
@@ -220,15 +226,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     String difficulty = widget.recipeData['difficulty'] ?? 'Medium';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A2B4C),
+      // 🔴 1. เปลี่ยน Scaffold เป็นสีขาว เพื่อไม่ให้มีสีมืดๆ ทะลุช่องรอยต่อขึ้นมา
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
           // 1. ภาพปก
           SliverAppBar(
-            expandedHeight:
-                300.0, // เพิ่มความสูงให้เห็นภาพชัดขึ้นได้ถ้ายากให้ภาพเต็มตา
+            expandedHeight: 300.0,
             pinned: true,
-            backgroundColor: const Color(0xFF1A2B4C),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            // 🔴 2. AppBar สีขาว เวลาย่อส่วน (เลื่อนขึ้นสุด) จะกลืนไปกับเนื้อหาอย่างสวยงาม
+            backgroundColor: Colors.white,
             leading: Padding(
               padding: const EdgeInsets.all(8.0),
               child: CircleAvatar(
@@ -242,22 +252,32 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Image.network(imageUrl, fit: BoxFit.cover),
             ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(30),
+              // 🔴 3. พระเอกของการยาแนว! ดันส่วนโค้งลงมา 1 พิกเซล เพื่อให้ปิดรอยแตกให้สนิท 100%
+              child: Transform.translate(
+                offset: const Offset(0, 1),
+                child: Container(
+                  height: 30,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(36),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
 
           // 2. เนื้อหาหลัก
           SliverToBoxAdapter(
             child: Container(
-              // 🔴 ปรับระยะยกตัวขึ้นมา -32 เพื่อให้ขอบโค้งกินพื้นที่ภาพมากขึ้น
-              transform: Matrix4.translationValues(0.0, -32.0, 0.0),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                // 🔴 ปรับขอบให้มนมากๆ แบบภาพ UI ของคุณ
-                borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-              ),
+              // 🔴 4. ลบ transform ออก กลายเป็นกล่องสีขาวธรรมดาที่ต่อสนิทกับขอบโค้งเป๊ะๆ
+              color: Colors.white,
               child: Padding(
-                // 🔴 เพิ่มระยะห่างระหว่างตัวหนังสือและขอบให้กว้างและสบายตาขึ้น (Top 32, ข้าง 24)
                 padding: const EdgeInsets.only(
-                  top: 32.0,
                   left: 24.0,
                   right: 24.0,
                   bottom: 20.0,
@@ -273,10 +293,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           child: Text(
                             title,
                             style: const TextStyle(
-                              fontSize:
-                                  26, // 🔴 ปรับให้ใหญ่ขึ้นนิดนึงให้เด่นชัด
-                              fontWeight:
-                                  FontWeight.w900, // หนาขึ้นเพื่อความคล้าย UI
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
                               color: Color(0xFF1A2B4C),
                               height: 1.3,
                             ),
@@ -290,7 +308,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             color: isFavorite
                                 ? Colors.red
                                 : const Color(0xFFF97316),
-                            size: 32, // 🔴 หัวใจใหญ่ขึ้นนิดนึง
+                            size: 32,
                           ),
                         ),
                       ],
@@ -342,16 +360,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // สถิติ
+                    // Row สำหรับ time,rating,defficulty
                     Row(
                       children: [
                         _buildStatCard(Icons.access_time, time),
                         const SizedBox(width: 12),
                         _buildStatCard(
-                          Icons
-                              .local_fire_department_outlined, // 🔴 ใช้ไอคอนไฟให้คล้าย UI (Kcal)
-                          rating, // ถ้าคุณมีฟิลด์แคลอรี่สามารถเปลี่ยนตัวแปรตรงนี้ได้
+                          Icons.star,
+                          rating,
                           iconColor: const Color(0xFFF97316),
                         ),
                         const SizedBox(width: 12),
@@ -376,7 +392,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         style: TextStyle(color: Colors.grey),
                       ),
                     ...ingredients.map((ingMap) {
-                      // 🔴 ส่ง name และ qty แยกกัน เพื่อจัด layout แบบซ้าย-ขวา
                       return _buildBulletItem(
                         name: ingMap['name'] ?? '',
                         qty: ingMap['qty'] ?? '',
@@ -427,10 +442,35 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Icon(
-                              Icons.star,
-                              color: Colors.orange.shade400,
-                              size: 20,
+                            Row(
+                              children: List.generate(5, (index) {
+                                // แปลงคะแนนที่ดึงมาให้เป็นตัวเลข
+                                double numRating =
+                                    double.tryParse(rating) ?? 0.0;
+
+                                if (index < numRating.floor()) {
+                                  // 1. ถ้าตำแหน่งดาวน้อยกว่าคะแนนเต็ม (เช่น คะแนน 4.5 ดาวที่ 1-4 จะทึบ)
+                                  return Icon(
+                                    Icons.star,
+                                    color: Colors.orange.shade400,
+                                    size: 20,
+                                  );
+                                } else if (index < numRating) {
+                                  // 2. ถ้ามีเศษทศนิยม (เช่น 4.5 ดาวที่ 5 จะเป็นครึ่งดวง)
+                                  return Icon(
+                                    Icons.star_half,
+                                    color: Colors.orange.shade400,
+                                    size: 20,
+                                  );
+                                } else {
+                                  // 3. ดาวที่เหลือให้เป็นดาวโปร่ง (ดาวเปล่า)
+                                  return Icon(
+                                    Icons.star_border,
+                                    color: Colors.orange.shade400,
+                                    size: 20,
+                                  );
+                                }
+                              }),
                             ),
                           ],
                         ),
@@ -471,10 +511,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // =========================================
-  // WIDGET HELPERS
-  // =========================================
-
+  // Widget สำหรับแสดง ui time,rating,difficulty
   Widget _buildStatCard(
     IconData icon,
     String value, {
@@ -505,17 +542,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // 🔴 ปรับปรุง Ingredients: ให้ Qty ไปชิดขวามือ
   Widget _buildBulletItem({required String name, required String qty}) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 16.0,
-      ), // ห่างกันมากขึ้นนิดนึงให้ดูคลีน
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.center, // จัดให้อยู่กึ่งกลางแนวนอน
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // จุดไข่ปลา
           Text(
             '•',
             style: TextStyle(
@@ -525,24 +557,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // ชื่อส่วนผสม (Name) จะอยู่ชิดซ้าย
           Expanded(
             child: Text(
               name,
               style: TextStyle(
                 color: Colors.grey.shade800,
                 fontSize: 16,
-                fontWeight: FontWeight.w500, // หนาขึ้นนิดนึง
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          // จำนวน (Qty) จะถูกดันไปชิดขวาสุดอัตโนมัติด้วย Expanded ด้านบน
           if (qty.isNotEmpty) ...[
             const SizedBox(width: 16),
             Text(
               qty,
               style: TextStyle(
-                color: Colors.grey.shade500, // สีเทาอ่อนๆ เหมือน UI ต้นฉบับ
+                color: Colors.grey.shade500,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -766,7 +796,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           );
         } else {
           return Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),

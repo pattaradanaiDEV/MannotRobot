@@ -370,8 +370,16 @@ class HomeScreen extends StatelessWidget {
     String imageUrl =
         data['imageUrl'] ??
         'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80';
-    String instructionSnippet =
-        data['instructions'] ?? 'No instructions provided.';
+    String instructionSnippet = 'No instructions provided.';
+    var rawInstructions = data['instructions'];
+
+    if (rawInstructions is List && rawInstructions.isNotEmpty) {
+      // ถ้าเป็นข้อมูลแบบใหม่ (List) ให้เอาขั้นตอนแรก (first) มาแสดงเป็นพรีวิว
+      instructionSnippet = rawInstructions.first.toString();
+    } else if (rawInstructions is String) {
+      // ถ้าเป็นข้อมูลแบบเก่า ให้แสดงข้อความปกติ
+      instructionSnippet = rawInstructions;
+    }
     String rating = (data['rating'] ?? 0.0).toString();
 
     final user = FirebaseAuth.instance.currentUser;
