@@ -357,12 +357,10 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () async {
                   await FirebaseAuth.instance.signOut();
                   if (context.mounted) {
-                    Navigator.of(context).pop(); // ปิด Modal
-
-                    // บรรทัดนี้จะพาคุณวาร์ปกลับไปหน้า LoginPage
+                    // ล้างทุกหน้าทิ้ง แล้วเริ่มใหม่ที่ LoginPage
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => const LoginPage()),
-                          (route) => false,
+                          (route) => false, // บรรทัดนี้คือการสั่งลบประวัติหน้าจอทั้งหมด
                     );
                   }
                 },
