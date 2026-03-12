@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../home/job_detail_screen.dart';
+import '../home/recipe_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   final bool isRecipeMode;
@@ -17,92 +18,91 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  int selectedFilterIndex = 0;
   String searchQuery = "";
+  String selectedTag = "All";
 
-  // ข้อมูลหมวดหมู่สมมติ (คุณสามารถเพิ่มใน Firestore ได้ภายหลัง)
-  final List<Map<String, String>> categories = [
-    {
-      'name': 'Mains',
-      'image':
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
-    },
-    {
-      'name': 'Pastry',
-      'image':
-      'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&q=80',
-    },
-    {
-      'name': 'Drinks',
-      'image':
-      'https://images.unsplash.com/photo-1544145945-f904253d0c7b?w=500&q=80',
-    },
-    {
-      'name': 'Vegan',
-      'image':
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80',
-    },
+  // รายการ Tags สำหรับอาหาร (Copy มาจากหน้า Post ของคุณ)
+  final List<String> recipeTags = [
+    'All', "Breakfast", "Lunch", "Dinner", "Dessert", "Snack", "Beverage",
+    "Thai", "Japanese", "Italian", "Mexican", "Chinese", "Indian", "Korean",
+    "Vegan", "Vegetarian", "Keto", "Gluten-Free", "Low-Carb", "High-Protein",
+    "Healthy", "Fast Food", "Street Food", "Seafood", "Chicken", "Beef",
+    "Pork", "Spicy", "Sweet", "Savory", "Baking", "Grilling", "Fried", "Soup", "Salad"
   ];
+
+  // รายการ Tags สำหรับงาน
+  final List<String> jobTags = ['All', 'Full-time', 'Part-time', 'Contract', 'Internship'];
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = widget.isRecipeMode
-        ? const Color(0xFFF97316)
-        : Colors.blue.shade600;
+    final Color primaryColor = widget.isRecipeMode ? const Color(0xFFF97316) : Colors.blue.shade600;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              _buildHeader(),
-              _buildSearchBar(),
-              _buildFilterChips(primaryColor),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ส่วนหัวและปุ่มสลับโหมด
+            _buildHeader(primaryColor),
 
-              _buildSectionTitle('Explore by Category'),
-              _buildCategoryGrid(),
+            // ช่องค้นหา
+            _buildSearchBar(),
 
-              _buildSectionTitle('Recent Opportunities'),
-              _buildRecentOpportunities(),
+            // แถบเลือก Tags (เลื่อนซ้าย-ขวาได้)
+            _buildTagFilter(primaryColor),
 
-              const SizedBox(height: 100),
-            ],
-          ),
+            const SizedBox(height: 10),
+
+            // รายการผลลัพธ์จาก Firestore
+            Expanded(
+              child: _buildResultsList(primaryColor),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Text(
-        'Discover',
-        style: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1A2B4C),
-        ),
+  Widget _buildHeader(Color primaryColor) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            widget.isRecipeMode ? 'Explore Recipes' : 'Explore Jobs',
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
+          ),
+          // ปุ่มสลับโหมด
+          ActionChip(
+            label: Text(widget.isRecipeMode ? 'Jobs' : 'Recipes'),
+            onPressed: () {
+              widget.onModeChanged(!widget.isRecipeMode);
+              setState(() => selectedTag = "All"); // รีเซ็ตตัวกรองเมื่อสลับโหมด
+            },
+            backgroundColor: primaryColor.withOpacity(0.1),
+            labelStyle: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+            avatar: Icon(widget.isRecipeMode ? Icons.work_outline : Icons.restaurant_menu, size: 16, color: primaryColor),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: TextField(
-        onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+        onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
         decoration: InputDecoration(
-          hintText: 'Search recipes, jobs, or chefs...',
+          hintText: widget.isRecipeMode ? 'ค้นหาสูตรอาหารที่ต้องการ...' : 'ค้นหาตำแหน่งงาน...',
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          suffixIcon: const Icon(Icons.tune, color: Colors.grey),
           filled: true,
-          fillColor: Colors.grey.shade100,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide.none,
           ),
         ),
@@ -110,35 +110,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildFilterChips(Color primaryColor) {
-    final List<String> labels = ['All', 'Recipes', 'Jobs', 'Chefs'];
+  Widget _buildTagFilter(Color primaryColor) {
+    List<String> currentTags = widget.isRecipeMode ? recipeTags : jobTags;
+
     return SizedBox(
-      height: 45,
+      height: 50,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: labels.length,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: currentTags.length,
         itemBuilder: (context, index) {
-          bool isSelected = selectedFilterIndex == index;
+          final tag = currentTags[index];
+          bool isSelected = selectedTag == tag;
           return Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: Text(labels[index]),
+              label: Text(tag),
               selected: isSelected,
-              onSelected: (val) {
-                setState(() => selectedFilterIndex = index);
-                if (index == 1) widget.onModeChanged(true);
-                if (index == 2) widget.onModeChanged(false);
-              },
-              selectedColor: const Color(0xFF2D3142),
+              onSelected: (val) => setState(() => selectedTag = tag),
+              selectedColor: primaryColor,
               backgroundColor: Colors.white,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Colors.black87,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+              showCheckmark: false,
+              elevation: 1,
             ),
           );
         },
@@ -146,116 +145,115 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1A2B4C),
-        ),
-      ),
-    );
-  }
+  Widget _buildResultsList(Color primaryColor) {
+    String collection = widget.isRecipeMode ? 'recipes' : 'jobs';
+    Query query = FirebaseFirestore.instance.collection(collection);
 
-  Widget _buildCategoryGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            image: DecorationImage(
-              image: NetworkImage(categories[index]['image']!),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: Colors.black.withOpacity(0.3),
-            ),
-            child: Center(
-              child: Text(
-                categories[index]['name']!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+    // กรองตาม Tag (ถ้าไม่ใช่ All)
+    if (selectedTag != "All") {
+      if (widget.isRecipeMode) {
+        // กรองจากฟิลด์ 'tags' (Array) ในเอกสาร Recipe
+        query = query.where('tags', arrayContains: selectedTag);
+      } else {
+        // กรองจากฟิลด์ 'jobType' ในเอกสาร Job
+        query = query.where('jobType', isEqualTo: selectedTag);
+      }
+    }
 
-  Widget _buildRecentOpportunities() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('jobs')
-          .limit(3)
-          .snapshots(),
+      stream: query.snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
-        final docs = snapshot.data!.docs;
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('ไม่พบข้อมูลที่ต้องการ'));
+        }
+
+        // กรองคำค้นหา (Search Query) ที่ Client
+        var docs = snapshot.data!.docs.where((doc) {
+          String title = (doc.data() as Map<String, dynamic>)['title']?.toString().toLowerCase() ?? "";
+          return title.contains(searchQuery);
+        }).toList();
+
+        if (docs.isEmpty) {
+          return const Center(child: Text('ไม่พบผลลัพธ์ที่ค้นหา'));
+        }
+
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: docs.length,
           itemBuilder: (context, index) {
-            final doc = docs[index]; // 🔴 ดึง document มาเก็บไว้ก่อน
-            var data = doc.data() as Map<String, dynamic>;
+            final data = docs[index].data() as Map<String, dynamic>;
+            final String docId = docs[index].id;
 
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundImage: NetworkImage(
-                  data['logoUrl'] ??
-                      data['imageUrl'] ??
-                      'https://via.placeholder.com/150',
-                ),
-                backgroundColor: Colors.grey.shade200,
-              ),
-              title: Text(
-                data['title'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(data['companyName'] ?? ''),
-              trailing: const Text(
-                'Apply',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            return GestureDetector(
               onTap: () {
-                // ดึง ID ของ document ออกมา (ใน Recent Opportunities เรามี docId อยู่แล้ว)
-                final String docId = docs[index].id;
-                var data = docs[index].data() as Map<String, dynamic>;
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => JobDetailScreen(
-                      jobData: data,
-                      jobId: doc.id, // 🔴 เพิ่มการส่ง jobId ไปด้วย
-                    ),
-                  ),
-                );
+                if (widget.isRecipeMode) {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => RecipeDetailScreen(recipeData: data, recipeId: docId),
+                  ));
+                } else {
+                  // ฝั่ง Job ปกติจะกดได้เลยถ้าชื่อ Class ตรง
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => JobDetailScreen(jobData: data, jobId: docId),
+                  ));
+                }
               },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        data['imageUrl'] ?? 'https://via.placeholder.com/150',
+                        width: 75, height: 75, fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 75, height: 75, color: Colors.grey.shade100,
+                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['title'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A2B4C)),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.isRecipeMode ? "Chef ${data['authorName'] ?? ''}" : (data['companyName'] ?? ''),
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          // Badge แสดงความยากหรืองาน
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                            child: Text(
+                              widget.isRecipeMode ? (data['difficulty'] ?? 'Easy') : (data['jobType'] ?? 'Full-time'),
+                              style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  ],
+                ),
+              ),
             );
           },
         );
