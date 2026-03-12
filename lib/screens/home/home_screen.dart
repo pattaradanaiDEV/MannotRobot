@@ -34,7 +34,9 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
@@ -517,7 +519,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            rating,
+                            "$rating (${data['reviewCount'] ?? 0} Reviews)",
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,

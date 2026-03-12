@@ -484,6 +484,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 }
                               }),
                             ),
+                            Text(
+                              "(${widget.recipeData['reviewCount'] ?? 0} Reviews)",
+                              style: const TextStyle(fontSize: 14),
+                            ),
                           ],
                         ),
                         TextButton(

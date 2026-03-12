@@ -10,8 +10,6 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  bool isProfessional = false;
-
   // เพิ่ม Controllers เพื่อเก็บค่าที่พิมพ์
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -110,42 +108,6 @@ class _SignUpPageState extends State<SignUpPage> {
               Icons.history_outlined,
               _confirmController,
               isPass: true,
-            ),
-
-            const SizedBox(height: 20),
-
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black12),
-              ),
-              child: Row(
-                children: [
-                  Radio<bool>(
-                    value: true,
-                    groupValue: isProfessional,
-                    activeColor: Colors.orange,
-                    onChanged: (val) => setState(() => isProfessional = val!),
-                  ),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Professional Account",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          "Are you a culinary professional looking for work?",
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
 
             const SizedBox(height: 30),

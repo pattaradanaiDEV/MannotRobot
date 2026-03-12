@@ -44,6 +44,7 @@ class _MainLayoutState extends State<MainLayout> {
     ];
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: pages[_currentIndex],
       floatingActionButton: Container(
         height: 64,

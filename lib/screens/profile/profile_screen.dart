@@ -6,7 +6,6 @@ import '/login.dart';
 import '/screens/home/job_detail_screen.dart';
 import '/screens/home/recipe_detail_screen.dart';
 
-
 class ProfileScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
@@ -22,7 +21,9 @@ class ProfileScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final String displayName = user?.displayName ?? user?.email ?? 'User';
     final String photoUrl = user?.photoURL ?? '';
-    final String initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final String initial = displayName.isNotEmpty
+        ? displayName[0].toUpperCase()
+        : '?';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -35,7 +36,11 @@ class ProfileScreen extends StatelessWidget {
         ),
         title: const Text(
           'My Profile',
-          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -49,7 +54,7 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            _buildProfileHeader(displayName, photoUrl, initial),
+            _buildProfileHeader(displayName, photoUrl, initial, user?.uid),
             const SizedBox(height: 24),
 
             _buildStatsRow(user?.uid),
@@ -73,7 +78,12 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // --- Header Section ---
-  Widget _buildProfileHeader(String name, String photoUrl, String initial) {
+  Widget _buildProfileHeader(
+    String name,
+    String photoUrl,
+    String initial,
+    String? userId,
+  ) {
     return Column(
       children: [
         Stack(
@@ -81,17 +91,23 @@ class ProfileScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 45,
-              backgroundColor: isRecipeMode ? Colors.orange.shade100 : Colors.blue.shade100,
-              backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+              backgroundColor: isRecipeMode
+                  ? Colors.orange.shade100
+                  : Colors.blue.shade100,
+              backgroundImage: photoUrl.isNotEmpty
+                  ? NetworkImage(photoUrl)
+                  : null,
               child: photoUrl.isEmpty
                   ? Text(
-                initial,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: isRecipeMode ? Colors.orange.shade800 : Colors.blue.shade800,
-                ),
-              )
+                      initial,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: isRecipeMode
+                            ? Colors.orange.shade800
+                            : Colors.blue.shade800,
+                      ),
+                    )
                   : null,
             ),
           ],
@@ -99,14 +115,79 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           name,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A2B4C),
+          ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Culinary Professional',
-          style: TextStyle(color: Colors.grey, fontSize: 14),
-        ),
+        if (isRecipeMode)
+          _buildUserRating(userId)
+        else
+          const Text(
+            'Culinary Professional',
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
       ],
+    );
+  }
+
+  Widget _buildUserRating(String? userId) {
+    if (userId == null) return const SizedBox();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('recipes')
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox(height: 20);
+
+        final docs = snapshot.data!.docs;
+        double totalRating = 0;
+        int totalReviews = 0;
+        int ratedRecipeCount = 0;
+
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          double rating = (data['rating'] ?? 0.0).toDouble();
+          int reviewCount = data['reviewCount'] ?? 0;
+
+          if (rating > 0) {
+            totalRating += rating;
+            ratedRecipeCount++;
+          }
+          totalReviews += reviewCount;
+        }
+
+        double averageRating = ratedRecipeCount > 0
+            ? (totalRating / ratedRecipeCount)
+            : 0.0;
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.star, color: Colors.orange.shade400, size: 18),
+            const SizedBox(width: 4),
+            Text(
+              averageRating > 0 ? averageRating.toStringAsFixed(1) : "0.0",
+              style: TextStyle(
+                color: Colors.orange.shade400,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('•', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const SizedBox(width: 8),
+            Text(
+              '($totalReviews Reviews)',
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -119,13 +200,19 @@ class ProfileScreen extends StatelessWidget {
           .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snapshot) {
-        String postCount = snapshot.hasData ? snapshot.data!.docs.length.toString() : '0';
+        String postCount = snapshot.hasData
+            ? snapshot.data!.docs.length.toString()
+            : '0';
         return Center(
           child: Column(
             children: [
               Text(
                 postCount,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C)),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A2B4C),
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -148,7 +235,12 @@ class ProfileScreen extends StatelessWidget {
     return _buildStreamGrid(context, 'jobs', userId, 'New Job');
   }
 
-  Widget _buildStreamGrid(BuildContext context, String collection, String? userId, String addLabel) {
+  Widget _buildStreamGrid(
+    BuildContext context,
+    String collection,
+    String? userId,
+    String addLabel,
+  ) {
     if (userId == null) return const Center(child: Text("กรุณาเข้าสู่ระบบ"));
 
     return StreamBuilder<QuerySnapshot>(
@@ -174,7 +266,8 @@ class ProfileScreen extends StatelessWidget {
           ),
           itemCount: docs.length + 1,
           itemBuilder: (context, index) {
-            if (index == docs.length) return _buildAddNewCard(context, addLabel);
+            if (index == docs.length)
+              return _buildAddNewCard(context, addLabel);
 
             var data = docs[index].data() as Map<String, dynamic>;
             var docId = docs[index].id;
@@ -185,21 +278,16 @@ class ProfileScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => JobDetailScreen(
-                        jobData: data,
-                        jobId: docId,
-                      ),
+                      builder: (context) =>
+                          JobDetailScreen(jobData: data, jobId: docId),
                     ),
                   );
-                }
-                else if (collection == 'recipes') {
+                } else if (collection == 'recipes') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => RecipeDetailScreen( // ตรวจสอบชื่อคลาสหน้ารายละเอียดสูตรอาหารของคุณ
-                        recipeData: data,
-                        recipeId: docId,
-                      ),
+                      builder: (context) =>
+                          RecipeDetailScreen(recipeData: data, recipeId: docId),
                     ),
                   );
                 }
@@ -210,6 +298,13 @@ class ProfileScreen extends StatelessWidget {
                     ? '${data['timeMins'] ?? 0}m'
                     : (data['jobType'] ?? 'Full-time'),
                 imageUrl: data['imageUrl'] ?? 'https://via.placeholder.com/150',
+                rating: collection == 'recipes'
+                    ? (data['rating'] ?? 0.0).toDouble()
+                    : null,
+                // 🔴 ส่งค่า reviewCount เพิ่มเข้าไปด้วย
+                reviewCount: collection == 'recipes'
+                    ? (data['reviewCount'] ?? 0)
+                    : null,
               ),
             );
           },
@@ -223,11 +318,22 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
-          _buildToggleItem('My Recipes', isRecipeMode, () => onModeChanged(true)),
-          _buildToggleItem('My Jobs', !isRecipeMode, () => onModeChanged(false)),
+          _buildToggleItem(
+            'My Recipes',
+            isRecipeMode,
+            () => onModeChanged(true),
+          ),
+          _buildToggleItem(
+            'My Jobs',
+            !isRecipeMode,
+            () => onModeChanged(false),
+          ),
         ],
       ),
     );
@@ -242,13 +348,22 @@ class ProfileScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                    ),
+                  ]
+                : [],
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: isActive ? const Color(0xFF1A2B4C) : Colors.grey.shade500,
+                color: isActive
+                    ? const Color(0xFF1A2B4C)
+                    : Colors.grey.shade500,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -258,21 +373,41 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildItemCard({required String title, required String subTitle, required String imageUrl}) {
+  Widget _buildItemCard({
+    required String title,
+    required String subTitle,
+    required String imageUrl,
+    double? rating,
+    int? reviewCount,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(imageUrl, width: double.infinity, fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: Image.network(
+                imageUrl,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.image_not_supported),
+                ),
               ),
             ),
           ),
@@ -281,9 +416,71 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
-                Text(subTitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // 🔴 ถ้ามีการส่งค่า rating มา (แสดงว่าเป็นโหมด Recipe)
+                    if (rating != null) ...[
+                      // 1. ฝั่งซ้าย: คะแนนรีวิว
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: Colors.orange.shade400,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${rating > 0 ? rating.toStringAsFixed(1) : "0.0"} (${reviewCount ?? 0} Reviews)",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      // 2. ฝั่งขวา: ไอคอนนาฬิกา + เวลาทำอาหาร
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: Colors.grey.shade500,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            subTitle,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ]
+                    // 🔴 ถ้าไม่มีค่า rating (แสดงว่าเป็นโหมด Job) ให้โชว์ชิดซ้ายปกติ
+                    else ...[
+                      Text(
+                        subTitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -294,7 +491,8 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildAddNewCard(BuildContext context, String label) {
     return GestureDetector(
-      onTap: () => showDialog(context: context, builder: (context) => const PostModal()),
+      onTap: () =>
+          showDialog(context: context, builder: (context) => const PostModal()),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFF8F9FA),
@@ -306,11 +504,21 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.grey.shade200, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                shape: BoxShape.circle,
+              ),
               child: const Icon(Icons.add, color: Color(0xFF1A2B4C), size: 24),
             ),
             const SizedBox(height: 12),
-            Text(label, style: const TextStyle(color: Color(0xFF1A2B4C), fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF1A2B4C),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -321,27 +529,51 @@ class ProfileScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               const SizedBox(height: 20),
-              const Text('Account Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A2B4C))),
+              const Text(
+                'Account Settings',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A2B4C),
+                ),
+              ),
               const SizedBox(height: 20),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                title: const Text('Log out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                title: const Text(
+                  'Log out',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 onTap: () async {
                   await FirebaseAuth.instance.signOut();
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
-                          (route) => false,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
+                      (route) => false,
                     );
                   }
                 },

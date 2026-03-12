@@ -143,6 +143,7 @@ class FirestoreService {
 
       await _db.collection('recipes').doc(recipeId).update({
         'rating': double.parse(averageRating.toStringAsFixed(1)),
+        'reviewCount': reviewsSnapshot.docs.length,
       });
     }
   }
