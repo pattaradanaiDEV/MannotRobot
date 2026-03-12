@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/layout/main_layout.dart';
 
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -30,13 +29,11 @@ class _LoginPageState extends State<LoginPage> {
         // และป้องกัน User กด Back กลับมาหน้า Login ได้อีก
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainLayout()),
-              (route) => false,
+          (route) => false,
         );
       }
-     } catch (e) {
-
-     }
-    }
+    } catch (e) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,17 +92,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _passwordController,
               ),
 
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(color: Color(0xFFD35400)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 30),
 
               // Login Button
               SizedBox(
@@ -118,7 +105,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
 
               const SizedBox(height: 30),
-
 
               // Sign Up
               Row(

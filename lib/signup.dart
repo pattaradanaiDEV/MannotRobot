@@ -10,6 +10,9 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  // 🔴 1. เพิ่มตัวแปรเช็กสถานะการโหลด
+  bool _isLoading = false;
+
   // เพิ่ม Controllers เพื่อเก็บค่าที่พิมพ์
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -23,6 +26,11 @@ class _SignUpPageState extends State<SignUpPage> {
       ).showSnackBar(const SnackBar(content: Text("รหัสผ่านไม่ตรงกัน")));
       return;
     }
+
+    // 🔴 2. เริ่มแสดงตัวหมุนโหลดดิ้ง
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       // สร้างบัญชี Firebase
@@ -41,6 +49,13 @@ class _SignUpPageState extends State<SignUpPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message ?? "Sign up failed")));
+    } finally {
+      // 🔴 3. ปิดสถานะโหลดดิ้ง ไม่ว่าจะสำเร็จหรือพังก็ตาม
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -116,17 +131,30 @@ class _SignUpPageState extends State<SignUpPage> {
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: _signUp, // เรียกฟังก์ชันสม้ครสมาชิกที่นี่
+                // 🔴 4. ถ้าโหลดอยู่ให้ปุ่มกดไม่ได้ (กันผู้ใช้กดรัวๆ)
+                onPressed: _isLoading ? null : _signUp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange[800],
+                  disabledBackgroundColor:
+                      Colors.orange[300], // สีปุ่มตอนถูกล็อค
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
-                child: const Text(
-                  'Create Account',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
+                // 🔴 5. เปลี่ยนข้อความเป็นตัวหมุนโหลดดิ้ง
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : const Text(
+                        'Create Account',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
               ),
             ),
 

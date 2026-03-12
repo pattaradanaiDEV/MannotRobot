@@ -491,7 +491,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           ],
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _showAllReviewsModal,
                           style: TextButton.styleFrom(
                             backgroundColor: const Color(0xFFFFF7ED),
                             foregroundColor: const Color(0xFFF97316),
@@ -882,6 +882,97 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             ),
           );
         }
+      },
+    );
+  }
+
+  // 🔴 2. ฟังก์ชันแสดง Modal ดูรีวิวทั้งหมด (ไม่มี Limit)
+  void _showAllReviewsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // อนุญาตให้ยืดความสูงได้
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8, // ความสูงเริ่มต้น 80% ของจอ
+          minChildSize: 0.5,
+          maxChildSize: 0.95, // ยืดได้สูงสุด 95% ของจอ
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                // Header ของ Modal
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'All Reviews',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFEEEEEE)),
+
+                // เนื้อหารีวิวทั้งหมด
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('recipes')
+                        .doc(widget.recipeId)
+                        .collection('reviews')
+                        .orderBy('rating', descending: true)
+                        // 🔴 เอา .limit(5) ออก เพื่อให้ดึงมาทั้งหมด
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            "ยังไม่มีรีวิว",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      final reviews = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        controller:
+                            scrollController, // ให้ Scroll ไปพร้อมกับ Modal ได้
+                        padding: const EdgeInsets.all(20),
+                        itemCount: reviews.length,
+                        itemBuilder: (context, index) {
+                          var review =
+                              reviews[index].data() as Map<String, dynamic>;
+                          // 🔴 เรียกใช้ _buildReviewCard ตัวเดิมที่สร้างไว้แล้วได้เลย
+                          return _buildReviewCard(review);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }
