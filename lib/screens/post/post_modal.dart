@@ -1,10 +1,26 @@
+/*
+ * File: post_modal.dart
+ * Description: Modal สำหรับเลือกประเภทเนื้อหาที่ต้องการโพสต์
+ * Responsibilities:
+ * - แสดงตัวเลือกให้ผู้ใช้เลือกว่าจะโพสต์ Recipe หรือ Job
+ * - นำทางผู้ใช้ไปยังหน้าจอสร้างเนื้อหาที่เกี่ยวข้องเมื่อกดเลือก
+ * Author: Pattaradanai Chaitan และ Purich Saenasang (ร่วมกันคิดและออกแบบฟีเจอร์นี้)
+ */
+
 import 'package:flutter/material.dart';
 import 'create_recipe_screen.dart';
 import 'create_job_screen.dart';
 
+/// Dialog สำหรับให้ผู้ใช้เลือกว่าต้องการสร้างโพสต์ประเภทใด.
+///
+/// จะแสดงเป็นป๊อปอัปขึ้นมากลางหน้าจอ ประกอบด้วยตัวเลือกหลัก 2 อย่างคือ
+/// 'Share a recipe'และ 'Hire'.
 class PostModal extends StatelessWidget {
   const PostModal({super.key});
 
+  /// สร้างโครงสร้าง UI ของหน้าต่าง Modal.
+  ///
+  /// ประกอบด้วยข้อความหัวข้อ และจัดเรียงปุ่มตัวเลือก 2 ปุ่มในแนวนอน.
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -50,7 +66,7 @@ class PostModal extends StatelessWidget {
                 _buildOption(
                   context,
                   icon: Icons.work_outline,
-                  label: 'Hire/find a work',
+                  label: 'Hire',
                   color: Colors.blue.shade50,
                   iconColor: Colors.blue.shade600,
                   onTap: () {
@@ -71,6 +87,14 @@ class PostModal extends StatelessWidget {
     );
   }
 
+  /// Option Button แต่ละรายการภายใน Modal.
+  ///
+  /// รับค่าพารามิเตอร์เพื่อกำหนดลักษณะของปุ่ม:
+  /// - [icon]: ไอคอนที่จะแสดงตรงกลาง
+  /// - [label]: ข้อความอธิบายใต้ไอคอน
+  /// - [color]: สีพื้นหลังของกรอบไอคอน
+  /// - [iconColor]: สีของตัวไอคอน
+  /// - [onTap]: ฟังก์ชันที่จะทำงานเมื่อผู้ใช้กดปุ่ม
   Widget _buildOption(
     BuildContext context, {
     required IconData icon,
