@@ -1,3 +1,14 @@
+/*
+ * File: firestore_service.dart
+ * Description: บริการสำหรับจัดการข้อมูลกับฐานข้อมูล Firebase Firestore และ Storage
+ * Responsibilities:
+ * - อัปโหลดรูปภาพผ่าน ImgBB API
+ * - เพิ่ม ดึง อัปเดตข้อมูล Recipes และระบบรีวิว/ไลก์
+ * - เพิ่ม และดึงข้อมูล Jobs
+ * Author: 
+ * - Pattaradanai Chaitan (คิดและพัฒนาระบบในส่วนของ Recipe, Review, Like และImgBB)
+ * - Purich Saenasang (คิดและพัฒนาระบบในส่วนของ Job และ Like ทั้งหมด)
+ */
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -7,13 +18,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/recipe.dart';
 import '../models/job.dart';
 
+/// บริการจัดการฐานข้อมูล Firestore และการอัปโหลดไฟล์ของ app.
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ==========================================
-  // --- ส่วนจัดการไฟล์ (อัปโหลดรูปผ่าน ImgBB) ---
-  // ==========================================
+  /// อัปโหลดรูปภาพไปยัง ImgBB และคืนค่าเป็น URL ของรูปภาพ.
+  ///
+  /// รับค่าพารามิเตอร์ [imageFile]
+  /// คืนค่า `null` หากการอัปโหลดล้มเหลว หรือไม่พบ API Key.
   Future<String?> uploadImage(File imageFile) async {
     // ดึง API Key จากไฟล์ .env
     final String imgbbApiKey = dotenv.env['IMGBB_API_KEY'] ?? '';
@@ -45,14 +58,12 @@ class FirestoreService {
     }
   }
 
-  // ==========================================
-  // --- ส่วนของ Recipes ---
-  // ==========================================
-
+  /// บันทึกข้อมูลสูตรอาหารใหม่ลงในคอลเลกชัน `recipes`.
   Future<void> addRecipe(Recipe recipe) async {
     await _db.collection('recipes').add(recipe.toMap());
   }
 
+  /// คืนค่าสตรีมข้อมูล recipe ทั้งหมด เรียงตามวันที่สร้างจากใหม่ไปเก่า.
   Stream<QuerySnapshot> getRecipes() {
     return _db
         .collection('recipes')
@@ -60,6 +71,10 @@ class FirestoreService {
         .snapshots();
   }
 
+  /// สลับสถานะการกดถูกใจของสูตรอาหาร.
+  ///
+  /// Side effects:
+  /// อัปเดตอาร์เรย์ `likes` ใน [recipeId] โดยการเพิ่มหรือลบ [userId] ตามค่า [isLiked].
   Future<void> toggleRecipeLike(
     String recipeId,
     String userId,
@@ -77,6 +92,7 @@ class FirestoreService {
     }
   }
 
+  /// คืนค่าสตรีมข้อมูลรีวิวของสูตรอาหารที่ระบุด้วย [recipeId].
   Stream<QuerySnapshot> getRecipeReviews(String recipeId) {
     return _db
         .collection('recipes')
@@ -86,6 +102,7 @@ class FirestoreService {
         .snapshots();
   }
 
+  /// คืนค่าสตรีมข้อมูลสูตรอาหารที่ได้รับ Rating 5 อันดับแรก.
   Stream<QuerySnapshot> getTrendingRecipes() {
     return _db
         .collection('recipes')
@@ -94,6 +111,12 @@ class FirestoreService {
         .snapshots();
   }
 
+  /// บันทึกข้อมูลรีวิวใหม่สำหรับ Recipe และคำนวณคะแนนเฉลี่ยใหม่.
+  ///
+  /// Throws [Exception] หากผู้ใช้ยังไม่ได้เข้าสู่ระบบ หรือผู้ใช้เคยรีวิวสูตรนี้ไปแล้ว.
+  ///
+  /// Side effects:
+  /// อัปเดตค่า `rating` และ `reviewCount` ในเอกสารสูตรอาหารหลัก.
   Future<void> addRecipeReview(
     String recipeId,
     double rating,
@@ -148,14 +171,12 @@ class FirestoreService {
     }
   }
 
-  // ==========================================
-  // --- ส่วนของ Jobs ---
-  // ==========================================
-
+  /// บันทึกข้อมูล Job ใหม่ลงในคอลเลกชัน `jobs`.
   Future<void> addJob(Job job) async {
     await _db.collection('jobs').add(job.toMap());
   }
 
+  /// คืนค่าสตรีมข้อมูล Job เรียงตามวันที่สร้างจากใหม่ไปเก่า.
   Stream<QuerySnapshot> getJobs() {
     return _db
         .collection('jobs')

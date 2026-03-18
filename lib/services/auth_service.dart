@@ -1,16 +1,29 @@
+/*
+ * File: auth_service.dart
+ * Description: จัดการการยืนยันตัวตนผ่าน Firebase Auth
+ * Responsibilities:
+ * - จัดการการเข้าสู่ระบบ สมัครสมาชิก และออกจากระบบ
+ * - บันทึกข้อมูลโปรไฟล์เริ่มต้นของผู้ใช้ใหม่ลง Firestore
+ * Author: Purich Saenasang
+ */
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// จัดการการยืนยันตัวตนของผู้ใช้ผ่าน Firebase.
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // คืนค่า User ปัจจุบัน (ถ้ามี)
+  /// ดึงข้อมูลผู้ใช้ปัจจุบันที่ล็อกอินอยู่.
+  ///
+  /// คืนค่าเป็น `null` หากยังไม่ได้ล็อกอิน.
   User? get currentUser => _auth.currentUser;
 
-  // ตรวจจับสถานะว่า Login หรือ Logout อยู่แบบ Real-time
+  /// สตรีมตรวจสอบสถานะการเข้าสู่ระบบแบบเรียลไทม์.
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // ฟังก์ชัน: เข้าสู่ระบบ (Login)
+  /// ดำเนินการเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน.
+  ///
+  /// Throws Exception หากการเข้าสู่ระบบล้มเหลว.
   Future<UserCredential> signInWithEmailPassword(
     String email,
     String password,
@@ -25,9 +38,12 @@ class AuthService {
     }
   }
 
-  // ฟังก์ชัน: สมัครสมาชิก (Register) พร้อมตั้งชื่อ Display Name
-  // ในไฟล์ auth_service.dart
-
+  /// ดำเนินการสมัครสมาชิกใหม่ด้วยอีเมล รหัสผ่าน และตั้งชื่อแสดงผล.
+  ///
+  /// Throws Exception หากการสมัครสมาชิกล้มเหลว
+  ///
+  /// Side effects:
+  /// สร้างเอกสารโปรไฟล์ใหม่ของผู้ใช้ในคอลเลกชัน `users` บน Firestore.
   Future<UserCredential> signUpWithEmailPassword(
     String email,
     String password,
@@ -60,17 +76,8 @@ class AuthService {
     }
   }
 
-  // ฟังก์ชัน: ออกจากระบบ (Logout)
+  // ฟังก์ชัน: ออกจากระบบ.
   Future<void> signOut() async {
     await _auth.signOut();
-  }
-
-  // ฟังก์ชัน: ส่งอีเมลรีเซ็ตรหัสผ่าน (Forgot Password)
-  Future<void> resetPassword(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      rethrow;
-    }
   }
 }
