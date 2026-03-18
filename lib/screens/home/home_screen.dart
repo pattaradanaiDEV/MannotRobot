@@ -1,3 +1,15 @@
+/*
+ * File: home_screen.dart
+ * Description: หน้าจอหลักของแอปพลิเคชัน แสดงฟีด Recipes และ Job
+ * Responsibilities:
+ * - แสดงผลฟีดข้อมูล (Feed) ที่อัปเดตล่าสุดจากฐานข้อมูลแบบเรียลไทม์
+ * - แสดงส่วน "Trending Now" สำหรับรายการที่ได้รับความนิยมสูงสุด
+ * - จัดการการสลับโหมดการแสดงผลระหว่างสูตรอาหาร (Recipes) และงาน (Jobs)
+ * Author: 
+ * - Pattaradanai Chaitan (รับผิดชอบส่วนของระบบสูตรอาหารทั้งหมด และระบบ Trending ของสูตรอาหาร)
+ * - Purich Saenasang (รับผิดชอบปุ่มสลับโหมดการโชว์ Job/Recipe, ระบบของประกาศรับสมัครงานทั้งหมด และ UI โครงสร้างหลัก)
+ * Notes: UI ของรูปโปรไฟล์บริเวณ AppBar ถูกออกแบบและพัฒนาร่วมกัน
+ */
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,18 +18,27 @@ import '../../services/firestore_service.dart';
 import 'recipe_detail_screen.dart';
 import 'job_detail_screen.dart';
 
+/// วิดเจ็ตหน้าจอหลักของแอปพลิเคชัน.
+///
+/// คลาสนี้จะทำหน้าที่แสดงรายการเนื้อหาหลัก โดยจะเปลี่ยนข้อมูลและ UI ไปตาม
+/// [isRecipeMode] ว่าผู้ใช้กำลังเลือกดูสูตรอาหารหรืองานอยู่.
 class HomeScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
 
   final FirestoreService _firestoreService = FirestoreService();
 
+  /// สร้าง [HomeScreen] วิดเจ็ต.
   HomeScreen({
     super.key,
     required this.isRecipeMode,
     required this.onModeChanged,
   });
 
+  /// สร้างโครงสร้าง UI ของหน้าจอหลัก.
+  ///
+  /// ประกอบด้วยแถบด้านบนที่มีรูปโปรไฟล์, แถบสลับโหมด,
+  /// ส่วนแสดงรายการยอดนิยม, และส่วนฟีดข้อมูลหลัก.
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = isRecipeMode
@@ -94,7 +115,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-
+            // ส่วนแสดงรายการ Trend
             _buildTrendingSection(primaryColor),
 
             const SizedBox(height: 16),
@@ -108,6 +129,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างแถบเมนูสำหรับสลับระหว่างโหมด Recipes และ Jobs.
+  ///
+  /// ผู้ใช้สามารถแตะที่ปุ่มเพื่อใช้ฟังก์ชัน [onModeChanged]
+  /// และเปลี่ยนการแสดงผลเนื้อหาของทั้งหน้าจอได้.
   Widget _buildCustomTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -185,6 +210,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างส่วนแสดงผลรายการที่กำลังติด Treand.
+  ///
+  /// ดึงข้อมูลจาก Firestore แบบเรียลไทม์ผ่าน Stream. หากอยู่ในโหมดสูตรอาหาร จะดึง
+  /// ข้อมูลสูตรอาหารที่ได้ Rating สูงสุด 5 อันดับแรกมาแสดง.
   Widget _buildTrendingSection(Color tagColor) {
     return StreamBuilder<QuerySnapshot>(
       stream: isRecipeMode
@@ -245,6 +274,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างการ์ดแสดงผลรายการ Trend แต่ละใบ.
+  ///
+  /// รับค่าชื่อ [title], คำอธิบายรอง [subtitle], ลิงก์รูปภาพ [imageUrl],
+  /// และสีป้ายกำกับ [tagColor]. หากเป็นรายการแรกสุด (Top 1) จะแสดงป้ายกำกับ
+  /// คำว่า "Hot" กำกับไว้ที่การ์ดด้วยเงื่อนไข [isHot].
   Widget _buildTrendingCard(
     String title,
     String subtitle,
@@ -314,9 +348,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Recipe Feed
-  // ==========================================
+  /// สร้างและแสดงรายการ Recipes.
+  ///
+  /// ดึงข้อมูลสูตรอาหารจากฐานข้อมูล Firebase แบบเรียลไทม์ และสร้าง [ListView]
+  /// จัดเรียงตามลำดับเพื่อแสดงเป็นเนื้อหาหลักในหน้าจอ.
   Widget _buildRecipeFeed(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestoreService.getRecipes(),
@@ -353,6 +388,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างการ์ดแสดงผลสูตรอาหารแบบละเอียดแต่ละใบ.
+  ///
+  /// ดึงข้อมูลจาก [data] มาแสดงภาพปก ชื่อสูตรอาหาร ผู้เขียน และคะแนนรีวิว.
+  /// มีปุ่มหัวใจสำหรับให้ผู้ใช้สามารถแตะเพื่อทำการกดถูกใจได้.
   Widget _buildRecipeCard(
     BuildContext context,
     String docId,
@@ -368,10 +407,8 @@ class HomeScreen extends StatelessWidget {
     var rawInstructions = data['instructions'];
 
     if (rawInstructions is List && rawInstructions.isNotEmpty) {
-      // ถ้าเป็นข้อมูลแบบใหม่ (List) ให้เอาขั้นตอนแรก (first) มาแสดงเป็นพรีวิว
       instructionSnippet = rawInstructions.first.toString();
     } else if (rawInstructions is String) {
-      // ถ้าเป็นข้อมูลแบบเก่า ให้แสดงข้อความปกติ
       instructionSnippet = rawInstructions;
     }
     String rating = (data['rating'] ?? 0.0).toString();
@@ -538,9 +575,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // WIDGET: Job Feed
-  // ==========================================
+  /// สร้างและแสดงรายการ Job.
+  ///
+  /// ดึงข้อมูลประกาศงานจากฐานข้อมูล Firebase แบบเรียลไทม์ผ่าน Stream
+  /// และแสดงผลการ์ดงานเรียงต่อกันเป็นลิสต์ทางแนวตั้ง.
   Widget _buildJobFeed(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestoreService.getJobs(),
@@ -577,6 +615,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // สร้างการ์ดแสดงผลรายละเอียดประกาศรับสมัครงานแต่ละใบ.
+  ///
+  /// นำข้อมูล [data] มาแสดงรูปภาพประกอบ ชื่องาน ชื่อบริษัท สถานที่ รูปแบบงาน
+  /// และจำนวนเงินเดือน รวมถึงปุ่มสำหรับการบันทึกงานที่สนใจ.
   Widget _buildJobCard(
     BuildContext context,
     String docId,
@@ -584,7 +626,7 @@ class HomeScreen extends StatelessWidget {
   ) {
     String title = data['title'] ?? 'Job Title';
     String company = data['companyName'] ?? 'Company';
-    String companyLogo = data['logoUrl'] ?? ''; // ดึงโลโก้บริษัท
+    String companyLogo = data['logoUrl'] ?? '';
     String location = data['location'] ?? 'Location';
     String salary = data['salaryRange'] ?? 'N/A';
     String type = data['jobType'] ?? 'FULL-TIME';
