@@ -1,3 +1,12 @@
+/*
+ * File: create_recipe_screen.dart
+ * Description: หน้าจอสำหรับสร้างและโพสต์สูตรอาหารใหม่
+ * Responsibilities:
+ * - รับข้อมูลรายละเอียดสูตรอาหาร (ชื่อ, เวลา, ป้ายกำกับ, ความยาก)
+ * - จัดการฟอร์มแบบไดนามิกสำหรับการเพิ่ม/ลบ วัตถุดิบและวิธีทำ
+ * - อัปโหลดรูปภาพภาพปกสูตรอาหาร และบันทึกข้อมูลทั้งหมดลงฐานข้อมูล
+ * Author: Pattaradanai Chaitan
+ */
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,18 +14,23 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/firestore_service.dart';
 import '../../models/recipe.dart';
 
+/// วิดเจ็ตหน้าจอสำหรับให้ผู้ใช้สร้างโพสต์สูตรอาหารใหม่.
+///
+/// ภายในประกอบด้วยฟอร์มรับข้อมูลที่ผู้ใช้สามารถเพิ่ม/ลดจำนวนวัตถุดิบและขั้นตอนได้
+/// รวมถึงรองรับการอัปโหลดรูปภาพหน้าปกเพื่อบันทึกลงระบบ.
 class CreateRecipeScreen extends StatefulWidget {
+  /// สร้าง [CreateRecipeScreen] วิดเจ็ต.
   const CreateRecipeScreen({super.key});
 
   @override
   State<CreateRecipeScreen> createState() => _CreateRecipeScreenState();
 }
 
+/// จัดการสถานะของหน้าจอสร้างสูตรอาหาร.
 class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
   // State variables
   int difficultyIndex = 0; // 0: Easy, 1: Medium, 2: Hard
 
-  // 🔴 เพิ่มตัวแปรสำหรับเก็บหน่วยเวลาที่เลือก
   String _selectedTimeUnit = 'Mins'; // ค่าเริ่มต้นเป็น Mins
 
   // Services & Controllers
@@ -32,12 +46,11 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     TextEditingController(),
   ];
 
-  // Dynamic Controllers for Instructions
   final List<TextEditingController> _instructionControllers = [
     TextEditingController(),
   ];
 
-  // รายการ Tags อาหารทั้งหมดในโลก (สามารถเพิ่มลดได้)
+  // รายการ Tags อาหารทั้งหมดในโลก
   final List<String> _availableTags = [
     "Breakfast",
     "Lunch",
@@ -82,6 +95,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
+  /// ทำความสะอาดหน่วยความจำ.
+  ///
+  /// ล้างค่า Controller ทั้งหมดเพื่อป้องกัน Memory Leak.
   @override
   void dispose() {
     _titleController.dispose();
@@ -98,6 +114,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     super.dispose();
   }
 
+  /// ลบช่องกรอกข้อมูลวัตถุดิบออกจากฟอร์มหน้าจอตาม [index].
   void _removeIngredient(int index) {
     setState(() {
       _qtyControllers[index].dispose();
@@ -107,6 +124,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     });
   }
 
+  /// ลบช่องกรอกข้อมูลวิธีทำออกจากฟอร์มหน้าจอตาม [index].
   void _removeInstruction(int index) {
     setState(() {
       _instructionControllers[index].dispose();
@@ -114,6 +132,10 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     });
   }
 
+  /// เปิดแกลเลอรีรูปภาพเพื่อให้ผู้ใช้เลือกภาพหน้าปกสูตรอาหาร.
+  ///
+  /// ฟังก์ชันนี้ทำงานแบบ Async โดยจะรอให้ผู้ใช้เลือกภาพจากแกลเลอรี
+  /// หากเลือกสำเร็จจะอัปเดตสถานะของ [_imageFile].
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -125,6 +147,10 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     }
   }
 
+  /// รวบรวมข้อมูล อัปโหลดรูปภาพ และบันทึกสูตรอาหารลง Database.
+  ///
+  /// ฟังก์ชันนี้เป็นแบบ Async จะแสดงหน้าต่าง Loading ขณะรอดำเนินการ
+  /// หากมีข้อมูลที่จำเป็นไม่ครบจะระงับการทำงานและแสดงข้อความแจ้งเตือน.
   Future<void> _handlePostRecipe() async {
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,13 +165,14 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       return;
     }
 
-    // โชว์ Loading ระหว่างเซฟ (ขั้นตอนนี้อาจใช้เวลาหลายวินาทีเพราะต้องอัปโหลดรูป)
+    // โชว์ Loading ระหว่างเซฟ
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
+    // รวบรวมข้อมูลวัตถุดิบที่ผู้ใช้กรอก
     List<Map<String, String>> ingredientList = [];
     for (int i = 0; i < _qtyControllers.length; i++) {
       if (_nameControllers[i].text.trim().isNotEmpty) {
@@ -166,11 +193,10 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     int inputTime = int.tryParse(_timeController.text.trim()) ?? 0;
     int totalMins = _selectedTimeUnit == 'Hours' ? inputTime * 60 : inputTime;
 
-    // รูปเริ่มต้น (สลัดผัก) ถ้าผู้ใช้ไม่ได้เลือกรูป
+    // รูปเริ่มต้นถ้าผู้ใช้ไม่ได้เลือกรูป
     String finalImageUrl =
         "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80";
 
-    // 🔴 เพิ่มการเรียกใช้ฟังก์ชันอัปโหลดรูปตรงนี้!
     if (_imageFile != null) {
       String? uploadedUrl = await _firestoreService.uploadImage(_imageFile!);
       if (uploadedUrl != null) {
@@ -185,7 +211,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
         }
       }
     }
-
+    // สร้างออบเจกต์ Recipe เพื่อเตรียมบันทึกลง Database
     Recipe newRecipe = Recipe(
       userId: user!.uid,
       authorName: user!.displayName ?? "Anonymous Chef",
@@ -199,7 +225,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       tags: _selectedTags,
       ingredients: ingredientList,
       instructions: instructionList,
-      imageUrl: finalImageUrl, // 🔴 ส่ง URL รูปใหม่ (หรือรูปเริ่มต้น) เข้าไป
+      imageUrl: finalImageUrl,
       likes: [],
     );
 
@@ -220,6 +246,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     }
   }
 
+  /// สร้างโครงสร้างหน้าจอและฟอร์มสำหรับกรอกข้อมูล.
   @override
   Widget build(BuildContext context) {
     final String displayName = user?.displayName ?? user?.email ?? 'Chef';
@@ -397,7 +424,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // 🔴 เปลี่ยนเป็นการใช้ _buildDropdown แบบสามารถเลือกค่าได้
                 Expanded(
                   child: _buildDropdown(
                     value: _selectedTimeUnit,
@@ -647,8 +673,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     );
   }
 
-  // --- Helpers UI Components ---
-
+  /// สร้างวิดเจ็ตหัวข้อสำหรับแต่ละหมวดหมู่ในหน้าแบบฟอร์ม.
+  ///
+  /// สามารถกำหนดความหนาของตัวอักษรได้ผ่านค่า [isBold].
   Widget _buildSectionTitle(String title, {bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -663,6 +690,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     );
   }
 
+  /// สร้างปุ่มตัวเลือกสำหรับระดับความยาก.
+  ///
+  /// การแสดงผลสีจะเปลี่ยนไปเมื่อค่า [index] ตรงกับตัวแปร state.
   Widget _buildDiffButton(String label, int index) {
     bool isSelected = difficultyIndex == index;
     return Expanded(
@@ -698,6 +728,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     );
   }
 
+  /// สร้าง TextField สำหรับรับข้อมูลทั่วไป.
+  ///
+  /// รับค่า [hint] สำหรับข้อความแนะนำ และสามารถส่ง [controller] เพื่อผูกข้อมูลได้.
   Widget _buildTextField(
     String hint, {
     IconData? icon,
@@ -735,7 +768,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     );
   }
 
-  // 🔴 ปรับ _buildDropdown ให้รับค่ามาเปลี่ยนสถานะได้ (Dynamic)
+  /// สร้างเมนู Dropdown Menu.
+  ///
+  /// รับค่าปัจจุบัน [value] รายการตัวเลือก [items] และฟังก์ชันเปลี่ยนค่า [onChanged].
   Widget _buildDropdown({
     required String value,
     required List<String> items,
