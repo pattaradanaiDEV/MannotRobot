@@ -1,5 +1,16 @@
+/*
+ * File: recipe.dart
+ * Description: โมเดลข้อมูลสำหรับสูตรอาหาร
+ * Responsibilities:
+ * - กำหนดโครงสร้าง Attribute ของสูตรอาหาร
+ * - จัดการการแปลงข้อมูลกับ Firestore
+ * Author: Pattaradanai Chaitan
+ */
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// ตัวแทนออบเจกต์ของ Recipe ในระบบ.
+///
+/// ใช้สำหรับจัดเก็บและส่งผ่านข้อมูลสูตรอาหารระหว่างเลเยอร์ข้อมูลและ UI.
 class Recipe {
   final String? id; // Document ID ใน Firestore
   final String userId;
@@ -11,13 +22,12 @@ class Recipe {
   final List<Map<String, String>>
   ingredients; // e.g., [{'qty': '1 cup', 'name': 'Sugar'}]
 
-  // 🔴 1. เปลี่ยนจาก String เป็น List<String>
   final List<String> instructions;
-
   final String imageUrl;
   final List<String> likes; // เก็บ UserID ของคนที่กดหัวใจ
   final DateTime? createdAt;
 
+  /// สร้าง [Recipe] ออบเจกต์.
   Recipe({
     this.id,
     required this.userId,
@@ -33,9 +43,11 @@ class Recipe {
     this.createdAt,
   });
 
-  // ฟังก์ชันแปลงข้อมูลจาก Firestore (Map) มาเป็น Object ในแอป
+  /// สร้างออบเจกต์ [Recipe] จาก [Map] ที่ได้มาจาก Firestore.
+  ///
+  /// รับค่า [id] ของเอกสาร และ [map] ซึ่งเป็นข้อมูล JSON แบบ Key-Value.
+  /// มีฟังก์ชันภายในเพื่อรองรับโครงสร้างข้อมูลแบบเก่าสำหรับช่องวิธีทำ.
   factory Recipe.fromMap(String id, Map<String, dynamic> map) {
-    // 🔴 2. ฟังก์ชันช่วยเช็กข้อมูล (เผื่อข้อมูลเก่าเป็น String ข้อมูลใหม่เป็น List)
     List<String> parseInstructions(dynamic data) {
       if (data is List) {
         return List<String>.from(data);
@@ -77,7 +89,6 @@ class Recipe {
       'timeMins': timeMins,
       'tags': tags,
       'ingredients': ingredients,
-      // 🔴 4. ส่งเป็น Array ขึ้น Firestore ได้เลย
       'instructions': instructions,
       'imageUrl': imageUrl,
       'likes': likes,
