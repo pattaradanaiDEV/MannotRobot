@@ -1,12 +1,29 @@
+/*
+ * File: recipe_detail_screen.dart
+ * Description: หน้าจอแสดงรายละเอียดของ Recipe
+ * Responsibilities:
+ * - แสดงภาพหน้าปก วัตถุดิบ และขั้นตอนการทำอาหารอย่างละเอียด
+ * - จัดการระบบการกดถูกใจ (Like) และแสดงรายการรีวิว
+ * - มีระบบให้ผู้ใช้งานประเมินคะแนน (Rating) และเขียนรีวิว (Review) สำหรับสูตรอาหาร
+ * Author: Pattaradanai Chaitan
+ */
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
 
+/// วิดเจ็ตสำหรับแสดงหน้ารายละเอียดสูตรอาหาร.
+///
+/// รับค่าข้อมูลสูตรอาหารเบื้องต้น เพื่อแสดงผลเนื้อหาฉบับเต็ม
+/// รวมถึงดึงข้อมูลรีวิวเพิ่มเติมจาก Firestore.
 class RecipeDetailScreen extends StatefulWidget {
   final String recipeId;
+
+  /// ข้อมูลสูตรอาหารที่ถูกส่งมาจากหน้าจอก่อนหน้า.
   final Map<String, dynamic> recipeData;
 
+  /// สร้าง [RecipeDetailScreen] พร้อมกับข้อมูลสูตรอาหารที่ต้องการแสดง.
   const RecipeDetailScreen({
     super.key,
     required this.recipeId,
@@ -17,7 +34,9 @@ class RecipeDetailScreen extends StatefulWidget {
   State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
 }
 
+/// จัดการสถานะ (State) ของหน้าจอรายละเอียดสูตรอาหาร.
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
+  /// สถานะการกดถูกใจสูตรอาหารของผู้ใช้ปัจจุบัน.
   bool isFavorite = false;
   List<dynamic> ingredients = [];
   List<String> instructions = [];
@@ -29,20 +48,21 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   double _userRating = 0;
   final TextEditingController _commentController = TextEditingController();
 
+  /// เริ่มสถานะการทำงานและจัดเตรียมข้อมูลของหน้าจอ.
+  ///
+  /// ตรวจสอบการกดถูกใจของผู้ใช้ปัจจุบัน ดึงข้อมูลวัตถุดิบ
+  /// และแปลงข้อความวิธีทำให้เป็นรูปแบบ List เพื่อนำไปสร้าง UI.
   @override
   void initState() {
     super.initState();
 
-    // 1. เช็กว่า User คนนี้เคยไลก์สูตรนี้หรือยัง
     List<dynamic> likesList = widget.recipeData['likes'] ?? [];
     if (user != null) {
       isFavorite = likesList.contains(user!.uid);
     }
 
-    // 2. ดึงข้อมูลส่วนผสม
     ingredients = widget.recipeData['ingredients'] ?? [];
 
-    // 3. ดึงข้อความวิธีทำ แล้วแยกบรรทัด (\n) เป็นข้อๆ
     var rawInst = widget.recipeData['instructions'];
     if (rawInst is List) {
       instructions = List<String>.from(rawInst);
@@ -56,7 +76,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
-  // ฟังก์ชันกดหัวใจ
+  /// สลับสถานะการกดถูกใจ (Favorite) ของสูตรอาหารนี้.
+  ///
+  /// ฟังก์ชันนี้จะทำการเรียกใช้ Service เพื่ออัปเดตข้อมูลบน Firestore.
+  /// หากผู้ใช้ยังไม่ได้เข้าสู่ระบบ จะแสดงข้อความแจ้งเตือน [SnackBar].
   void _toggleFavorite() async {
     if (user == null) {
       ScaffoldMessenger.of(
@@ -72,7 +95,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // ฟังก์ชันกดส่งรีวิว
+  /// บันทึกข้อมูลรีวิวและคะแนนดาวของผู้ใช้ลงใน Database.
+  ///
+  /// ฟังก์ชันนี้เป็นแบบ Async โดยจะทำการส่งข้อมูลผ่าน Network และแสดงหน้าต่าง Loading ระหว่างรอดำเนินการ.
+  /// แสดงข้อความแจ้งเตือนสำเร็จเมื่อเสร็จสิ้น หรือแสดง Exception หากการอัปโหลดล้มเหลว.
+  ///
+  /// Side effects:
+  /// - เพิ่มรีวิวใหม่ใน Collection ของสูตรอาหาร
+  /// - ล้างค่าคะแนนดาว `_userRating` และเคลียร์ข้อความใน `_commentController` เมื่อทำงานสำเร็จ
   void _submitReview() async {
     if (_userRating == 0) {
       ScaffoldMessenger.of(
@@ -119,7 +149,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
-  // หน้าต่าง (Modal) สำหรับเขียนรีวิว
+  /// แสดงหน้าต่าง Pop-up สำหรับให้ผู้ใช้ให้คะแนนและเขียนรีวิว.
+  ///
+  /// ฟังก์ชันนี้จะตรวจสอบสถานะการล็อกอินก่อน หากยังไม่ล็อกอินจะแจ้งเตือนให้เข้าสู่ระบบ
+  /// และหากผ่านเงื่อนไขจะแสดงแบบฟอร์มให้กรอกรีวิวได้.
   void _showReviewModal() {
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -138,6 +171,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Padding(
+              // ป้องกันคีย์บอร์ดบังฟอร์มด้วยการ
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
                 left: 20,
@@ -213,6 +247,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างโครงสร้าง UI หน้าจอรายละเอียดสูตรอาหารหลัก.
+  ///
+  /// ใช้ [CustomScrollView] และ [SliverAppBar] เพื่อรองรับเอฟเฟกต์การเลื่อนหน้าจอที่ทำให้
+  /// รูปหน้าปกด้านบนสามารถย่อและขยายได้ ประกอบด้วยส่วนข้อมูล วัตถุดิบ ขั้นตอน และส่วนของรีวิว.
   @override
   Widget build(BuildContext context) {
     String title = widget.recipeData['title'] ?? 'Unknown Recipe';
@@ -225,7 +263,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     String rating = (widget.recipeData['rating'] ?? 0.0).toString();
     String difficulty = widget.recipeData['difficulty'] ?? 'Medium';
 
-    // 🔴 ดึงข้อมูล tags ออกมาจาก Firebase
     List<String> tags =
         (widget.recipeData['tags'] as List<dynamic>?)
             ?.map((e) => e.toString())
@@ -236,7 +273,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          // 1. ภาพปก
+          // ส่วนหน้าปกสูตรอาหาร
           SliverAppBar(
             expandedHeight: 300.0,
             pinned: true,
@@ -275,7 +312,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             ),
           ),
 
-          // 2. เนื้อหาหลัก
+          // ส่วนเนื้อหาข้อมูลสูตรอาหาร
           SliverToBoxAdapter(
             child: Container(
               color: Colors.white,
@@ -288,7 +325,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ชื่อสูตร และ ปุ่มกดหัวใจ
+                    // ส่วนชื่อเมนูอาหารและปุ่ม Favorit
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -318,7 +355,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ข้อมูลผู้โพสต์
+                    //  ส่วนข้อมูลผู้เขียนสูตร
                     Row(
                       children: [
                         CircleAvatar(
@@ -364,11 +401,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // 🔴 เพิ่มส่วนแสดง Tags
                     if (tags.isNotEmpty) ...[
                       Wrap(
-                        spacing: 8.0, // ระยะห่างแนวนอนระหว่าง tag
-                        runSpacing: 8.0, // ระยะห่างแนวตั้งเวลามันตกบรรทัด
+                        spacing: 8.0,
+                        runSpacing: 8.0,
                         children: tags
                             .map((tag) => _buildDisplayTag(tag))
                             .toList(),
@@ -376,7 +412,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Row สำหรับ time,rating,defficulty
+                    // ส่วนข้อมูลสถิติ
                     Row(
                       children: [
                         _buildStatCard(Icons.access_time, time),
@@ -392,7 +428,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     ),
                     const SizedBox(height: 36),
 
-                    // ส่วนผสม (Ingredients)
+                    // ส่วนวัตถุดิบ
                     const Text(
                       'Ingredients',
                       style: TextStyle(
@@ -403,7 +439,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     const SizedBox(height: 16),
                     if (ingredients.isEmpty)
                       const Text(
-                        "ไม่มีข้อมูลส่วนผสม",
+                        "ไม่มีข้อมูลวัตถุดิบ",
                         style: TextStyle(color: Colors.grey),
                       ),
                     ...ingredients.map((ingMap) {
@@ -414,7 +450,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     }),
                     const SizedBox(height: 36),
 
-                    // วิธีทำ (Instructions)
+                    //ส่วนวิธ๊ทำอาหาร
                     const Text(
                       'Instructions',
                       style: TextStyle(
@@ -443,7 +479,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     const Divider(color: Color(0xFFEEEEEE), thickness: 1),
                     const SizedBox(height: 24),
 
-                    // ส่วนของ Reviews
+                    // ส่วนรีวิว
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -527,11 +563,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // =========================================
-  // WIDGET HELPERS
-  // =========================================
-
-  // 🔴 Widget สำหรับแสดง Tag แต่ละอัน
+  /// สร้างวิดเจ็ตแสดง Tag หมวดหมู่ของอาหาร.
+  ///
+  /// รับค่า [label] เพื่อแสดงเป็นข้อความในปุ่ม.
   Widget _buildDisplayTag(String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -551,6 +585,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างการ์ดแสดงข้อมูลสถิติแบบย่อ.
+  ///
+  /// รับไอคอน [icon] ข้อความแสดงค่า [value] และสามารถปรับแต่งสีไอคอน [iconColor] ได้
+  /// เพื่อใช้แสดงข้อมูลเช่น เวลาที่ใช้, คะแนนดาว หรือระดับความยาก.
   Widget _buildStatCard(
     IconData icon,
     String value, {
@@ -581,6 +619,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างรายการวัตถุดิบแบบ Bullet point.
+  ///
+  /// แสดงชื่อวัตถุดิบ [name] และปริมาณ [qty] จัดเรียงกระจายตามแนวนอน.
   Widget _buildBulletItem({required String name, required String qty}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -623,6 +664,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างรายการขั้นตอนการทำอาหาร.
+  ///
+  /// แสดงตัวเลขขั้นตอน [step] หัวข้อ [title] และข้อความอธิบายความกว้างยาว [desc]
   Widget _buildInstructionStep({
     required int step,
     required String title,
@@ -696,6 +740,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างรายการแสดงผลรีวิว 5 อันดับล่าสุด.
+  ///
+  /// ฟังก์ชันนี้จะดึงข้อมูลผ่านสตรีมแบบ Async เพื่อแสดงความคิดเห็นใหม่ๆ แบบเรียลไทม์.
   Widget _buildReviewsList() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -734,6 +781,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างการ์ดแสดงผลข้อมูลรีวิวแต่ละรายการ.
+  ///
+  /// นำข้อมูล [review] มาจัดเรียงเพื่อแสดงภาพโปรไฟล์ ชื่อผู้ใช้ สัญลักษณ์ดาว (Rating) และเนื้อหาความคิดเห็น.
   Widget _buildReviewCard(Map<String, dynamic> review) {
     String name = review['userName'] ?? 'Anonymous';
     String photoUrl = review['userPhoto'] ?? '';
@@ -802,6 +852,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// สร้างส่วน UI สำหรับให้ผู้ใช้ทำการให้คะแนน.
+  ///
+  /// ดึงข้อมูลจาก Database เพื่อเช็กว่าผู้ใช้ปัจจุบันได้เขียนรีวิวเมนูนี้ไปแล้วหรือไม่.
+  /// หากเคยเขียนไปแล้ว ระบบจะซ่อนปุ่มเขียนรีวิวและแสดงเป็นกล่องข้อความแจ้งเตือนแทน.
   Widget _buildRateRecipeUI() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -886,7 +940,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // 🔴 2. ฟังก์ชันแสดง Modal ดูรีวิวทั้งหมด (ไม่มี Limit)
+  /// แสดงหน้าต่าง Bottom Sheet เพื่อดูรายการรีวิวของสูตรอาหารนี้ทั้งหมด.
+  ///
+  /// ดึงข้อมูลรีวิวทั้งหมดจาก Firestore
+  /// และแสดงในรูปแบบรายการที่สามารถ Scroll ดูได้ภายในหน้าต่าง.
   void _showAllReviewsModal() {
     showModalBottomSheet(
       context: context,
@@ -962,7 +1019,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         itemBuilder: (context, index) {
                           var review =
                               reviews[index].data() as Map<String, dynamic>;
-                          // 🔴 เรียกใช้ _buildReviewCard ตัวเดิมที่สร้างไว้แล้วได้เลย
                           return _buildReviewCard(review);
                         },
                       );
