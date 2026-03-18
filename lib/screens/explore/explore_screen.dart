@@ -1,12 +1,29 @@
+/*
+ * File: explore_screen.dart
+ * Description: หน้าจอสำหรับการค้นหา สำรวจ และกรองข้อมูล Recipe หรือประกาศงาน
+ * Responsibilities:
+ * - แสดงช่องค้นหาข้อมูลและแสดงผลลัพธ์การค้นหา
+ * - จัดการระบบ Filter แบบละเอียดด้วยหน้าต่าง Bottom Sheet
+ * - ดึงข้อมูลจากฐานข้อมูล Firestore และ Client-side filtering
+ * Author: 
+ * - Pattaradanai Chaitan (รับผิดชอบส่วนระบบของ Recipe ทั้งหมด และระบบตัวกรอง Filter ของ Recipe)
+ * - Purich Saenasang (รับผิดชอบปุ่มสลับโหมด Job/Recipe, ระบบของ Job ทั้งหมด และระบบตัวกรอง Filter ของ Job)
+ * Notes: UI ในหน้า Explore และส่วนช่อง Search ถูกออกแบบและพัฒนาร่วมกัน
+ */
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../home/job_detail_screen.dart';
 import '../home/recipe_detail_screen.dart';
 
+/// วิดเจ็ตหน้าจอสำหรับค้นหาและสำรวจเนื้อหาภายในแอปพลิเคชัน.
+///
+/// มีระบบค้นหาและตัวกรองแบบละเอียดเพื่อช่วยให้ผู้ใช้หา Recipe หรือประกาศรับสมัครงาน
+/// ตามเงื่อนไขที่ต้องการได้อย่างรวดเร็ว.
 class ExploreScreen extends StatefulWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
 
+  /// สร้าง [ExploreScreen] วิดเจ็ต.
   const ExploreScreen({
     super.key,
     required this.isRecipeMode,
@@ -17,12 +34,9 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
+/// จัดการ State ของหน้าจอการค้นหาและสำรวจข้อมูล.
 class _ExploreScreenState extends State<ExploreScreen> {
   String searchQuery = "";
-
-  // =====================================
-  // ตัวแปรสำหรับเก็บค่า Filter ปัจจุบัน
-  // =====================================
   List<String> activeFilterIngredients = [];
   List<String> activeFilterTags = [];
   String activeSortOption = "None"; // None, Highest Rated, Most Reviews
@@ -73,6 +87,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     'Internship',
   ];
 
+  /// สร้างโครงสร้าง UI หลักของหน้าจอการค้นหา.
+  ///
+  /// ประกอบด้วย Header และ SearchBar
+  /// และส่วนแสดงผลลัพธ์รายการที่ผ่านการค้นหาหรือตัวกรองแล้ว.
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = widget.isRecipeMode
@@ -96,6 +114,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// สร้าง Header.
+  ///
+  /// ประกอบด้วยข้อความหัวเรื่องและปุ่มสำหรับสลับโหมดการค้นหาระหว่าง Recipes และ Jobs.
   Widget _buildHeader(Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
@@ -133,6 +154,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// สร้างช่องค้นหาข้อความและปุ่มเปิดหน้าต่างตัวกรอง.
+  ///
+  /// เมื่อผู้ใช้พิมพ์ข้อความ จะทำการอัปเดตตัวแปร [searchQuery] และส่งผลให้ UI อัปเดตการแสดงผล.
   Widget _buildSearchBar(Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -176,6 +200,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// ล้างค่าตัวกรองและคำค้นหาทั้งหมดกลับเป็นค่าเริ่มต้น.
+  ///
+  /// ฟังก์ชันนี้จะรีเซ็ตค่า State เพื่อเคลียร์ผลลัพธ์การกรองทั้งหมด.
   void _resetFilters() {
     setState(() {
       activeFilterIngredients.clear();
@@ -187,9 +214,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
-  // =====================================
-  // Modal Filter
-  // =====================================
+  /// แสดง Filter Modal ขึ้นมาจากด้านล่างหน้าจอ.
+  ///
+  /// รับค่า [primaryColor] เพื่อกำหนดสีปุ่มใน Modal ตามโหมดที่กำลังใช้งานอยู่.
+  /// ภายในใช้ `StatefulBuilder` เพื่อให้สามารถอัปเดต UI ภายใน Bottom Sheet ได้.
   void _showFilterModal(Color primaryColor) {
     List<String> tempIngredients = List.from(activeFilterIngredients);
     List<String> tempTags = List.from(activeFilterTags);
@@ -207,7 +235,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
-        // 🔴 เปลี่ยนชื่อเพื่อไม่ให้ Context ซ้อนทับกัน
         return StatefulBuilder(
           builder: (stateContext, setModalState) {
             return DraggableScrollableSheet(
@@ -223,7 +250,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Header
+                      // ส่วน Header ของ Modal
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -259,12 +286,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         ],
                       ),
                       const Divider(),
+                      // ส่วนเนื้อหาตัวกรองที่เลื่อนขึ้นลงได้
                       Expanded(
                         child: ListView(
                           controller: scrollController,
                           children: [
+                            // 1. หมวดหมู่ตัวกรองวัตถุุดิบ - โชว์เฉพาะโหมด Recipe
                             if (widget.isRecipeMode) ...[
-                              // 1. Ingredients (เฉพาะ Recipe)
                               _buildModalSectionTitle('Ingredients'),
                               Wrap(
                                 spacing: 8,
@@ -307,7 +335,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                         context: context,
                                         useRootNavigator: true,
                                         builder: (dialogContext) => MediaQuery(
-                                          // 🔴 บังคับ viewInsets เป็น 0 เพื่อหลอก Dialog ว่าไม่มีคีย์บอร์ด มันจะได้ไม่ขยับ
                                           data: MediaQuery.of(dialogContext)
                                               .copyWith(
                                                 viewInsets: EdgeInsets.zero,
@@ -356,7 +383,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               const SizedBox(height: 24),
                             ],
 
-                            // 2. Tags (แสดงทั้ง Recipe และ Job)
+                            // 2. หมวดหมู่ตัวกรองป้ายกำกับ - แสดงทั้งสองโหมด
                             _buildModalSectionTitle('Tags'),
                             Wrap(
                               spacing: 8,
@@ -402,7 +429,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            // 🔴 ย้าย Sort By, Time Required, Difficulty Level ให้โชว์เฉพาะ Recipe Mode
+                            // ตัวกรองส่วนของ Recipe เท่านั้น
                             if (widget.isRecipeMode) ...[
                               // 3. Sort By
                               _buildModalSectionTitle('Sort By'),
@@ -436,7 +463,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // 4. Time Required
+                              // 4. หมวดหมู่ช่วงเวลาทำอาหาร
                               _buildModalSectionTitle('Time Required'),
                               Row(
                                 children: ['< 15m', '15-30m']
@@ -487,7 +514,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // 5. Difficulty Level
+                              // 5. หมวดหมู่ระดับความยาก
                               _buildModalSectionTitle('Difficulty Level'),
                               Row(
                                 children: ['Easy', 'Medium', 'Hard']
@@ -523,7 +550,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ],
                         ),
                       ),
-                      // ปุ่ม Apply
+                      // ปุ่มกดยืนยันเพื่อเซฟค่าตัวกรองลงใน State หลัก
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -565,6 +592,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// สร้างข้อความหัวข้อย่อยสำหรับใช้ภายในหน้าต่างตัวกรอง.
   Widget _buildModalSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -579,6 +607,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// สร้างปุ่มตัวเลือกแบบกดได้สำหรับใช้งานในหน้าต่างตัวกรอง.
+  ///
+  /// สีของปุ่มจะเปลี่ยนไปเมื่อค่าสถานะตรงกับ [isSelected].
+  /// สามารถจัดเรียงไอคอนให้อยู่ด้านบนข้อความได้ผ่านค่า [isVertical].
   Widget _buildChoiceButton(
     String label,
     bool isSelected,
@@ -634,9 +666,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // =====================================
-  // แสดงผลลัพธ์ (กรองและเรียงลำดับ)
-  // =====================================
+  /// ดึงข้อมูลจากฐานข้อมูลและสร้างรายการผลลัพธ์ที่ผ่านการกรอง Client side แล้ว.
+  ///
+  /// ดึงข้อมูลจาก Firestore แบบเรียลไทม์ และนำมากรองด้วยการ query
+  /// วัตถุดิบ ป้ายกำกับ เวลา และความยาก. และจัดการเรียงลำดับผลลัพธ์ด้วย.
   Widget _buildResultsList(Color primaryColor) {
     String collection = widget.isRecipeMode ? 'recipes' : 'jobs';
     Query query = FirebaseFirestore.instance.collection(collection);
@@ -649,17 +682,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
           return const Center(child: Text('ไม่พบข้อมูลในระบบ'));
 
-        // 1. นำข้อมูลมากรองฝั่ง Client
+        // กรองข้อมูลด้วยเงื่อนไขต่างๆ
         var docs = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
 
-          // --- กรอง 1: ชื่ออาหาร (Search Query) ---
+          // กรองด้วยคำค้นหาจากช่องค้นหา
           String title = (data['title'] ?? "").toString().toLowerCase();
           if (searchQuery.isNotEmpty && !title.contains(searchQuery))
             return false;
 
+          // ตัวกรองเฉพาะสำหรับโหมด Recpie
           if (widget.isRecipeMode) {
-            // --- กรอง 2: Ingredients ---
             if (activeFilterIngredients.isNotEmpty) {
               List<dynamic> recipeIngs = data['ingredients'] ?? [];
               bool hasIngredientMatch = false;
@@ -676,8 +709,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               }
               if (!hasIngredientMatch) return false;
             }
-
-            // --- กรอง 3: Tags ---
+            // กรองด้วยป้ายกำกับ
             if (activeFilterTags.isNotEmpty) {
               List<dynamic> rTags = data['tags'] ?? [];
               bool hasTagMatch = false;
@@ -689,8 +721,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               }
               if (!hasTagMatch) return false;
             }
-
-            // --- กรอง 4: Time Required ---
+            // กรองด้วยช่วงเวลา
             if (activeTimeOption.isNotEmpty) {
               int time = data['timeMins'] ?? 0;
               if (activeTimeOption == '< 15m' && time >= 15) return false;
@@ -700,13 +731,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 return false;
               if (activeTimeOption == '1h+' && time <= 60) return false;
             }
-
-            // --- กรอง 5: Difficulty Level ---
+            // กรองด้วยระดับความยาก
             if (activeDifficultyOption.isNotEmpty) {
               if (data['difficulty'] != activeDifficultyOption) return false;
             }
+            // ตัวกรองเฉพาะสำหรับโหมดประกาศรับสมัครงาน
           } else {
-            // โหมด Job (กรองแค่ Search กับ Tags)
             if (activeFilterTags.isNotEmpty &&
                 !activeFilterTags.contains(data['jobType']))
               return false;
@@ -715,7 +745,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           return true;
         }).toList();
 
-        // 2. จัดเรียงข้อมูล (Sorting) สำหรับโหมด Recipe
+        // จัดการ Sorting สำหรับโหมด Recipe
         if (widget.isRecipeMode && activeSortOption != "None") {
           docs.sort((a, b) {
             final dataA = a.data() as Map<String, dynamic>;
@@ -726,7 +756,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               double ratingB = (dataB['rating'] ?? 0.0).toDouble();
               return ratingB.compareTo(ratingA); // มากไปน้อย
             } else if (activeSortOption == 'Most Reviews') {
-              // 🔴 แก้ไขแล้ว: ดึงข้อมูลจากฟิลด์ reviewCount แทน likes
               int reviewsA = dataA['reviewCount'] ?? 0;
               int reviewsB = dataB['reviewCount'] ?? 0;
               return reviewsB.compareTo(reviewsA); // มากไปน้อย
@@ -738,7 +767,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (docs.isEmpty)
           return const Center(child: Text('ไม่พบผลลัพธ์ที่ตรงกับตัวกรอง'));
 
-        // 3. แสดงผล List
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: docs.length,
@@ -825,7 +853,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // 🔴 จัดกลุ่ม Badge และคะแนนดาวให้อยู่ใน Row เดียวกัน
                           Row(
                             children: [
                               Container(
@@ -848,7 +875,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   ),
                                 ),
                               ),
-                              // 🔴 เพิ่มส่วนแสดงคะแนนดาวเมื่อเป็นหน้าสูตรอาหาร
                               if (widget.isRecipeMode) ...[
                                 const SizedBox(width: 12),
                                 Icon(
