@@ -1,3 +1,14 @@
+/*
+ * File: profile_screen.dart
+ * Description: หน้าจอแสดงรายละเอียดโปรไฟล์ผู้ใช้ และประวัติการโพสต์เนื้อหา
+ * Responsibilities:
+ * - แสดงข้อมูลผู้ใช้งาน (ชื่อ, รูปโปรไฟล์)
+ * - แสดงสถิติจำนวนการโพสต์ และคะแนนรีวิวเฉลี่ย
+ * - แสดงรายการสูตรอาหารและงานที่ผู้ใช้นี้เคยโพสต์
+ * Author: Pattaradanai Chaitan (พัฒนาระบบแสดงผลรายการสูตรอาหาร และระบบคำนวณ/แสดงผล Rating)
+ * Co-Author: Purich Saenasang (พัฒนาระบบปุ่มสลับโหมด, รายการประกาศรับสมัครงาน และโครงสร้าง UI หน้า Profile)
+ */
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,16 +17,25 @@ import '/login.dart';
 import '/screens/home/job_detail_screen.dart';
 import '/screens/home/recipe_detail_screen.dart';
 
+/// วิดเจ็ตสำหรับแสดงหน้าโปรไฟล์ผู้ใช้.
+///
+/// แสดงรายละเอียดบัญชีผู้ใช้ปัจจุบัน สถิติการใช้งาน
+/// และรายการเนื้อหา (สูตรอาหารหรืองาน) ที่ผู้ใช้เคยสร้างไว้ในระบบ.
 class ProfileScreen extends StatelessWidget {
   final bool isRecipeMode;
   final ValueChanged<bool> onModeChanged;
 
+  /// สร้าง [ProfileScreen] วิดเจ็ต.
   const ProfileScreen({
     super.key,
     required this.isRecipeMode,
     required this.onModeChanged,
   });
 
+  /// สร้างโครงสร้าง UI หลักของหน้าจอ Profile.
+  ///
+  /// ประกอบด้วย AppBar ด้านบนสุด ข้อมูลโปรไฟล์ สถิติ
+  /// ปุ่มสลับโหมดและพื้นที่แสดงรายการโพสต์.
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -77,7 +97,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- Header Section ---
+  /// สร้างส่วนหัวของโปรไฟล์ แสดงรูปภาพและชื่อผู้ใช้.
+  ///
+  /// หากอยู่ในโหมดส Recipe จะแสดงคะแนนดาวเฉลี่ยด้านล่างชื่อ
+  /// หากอยู่ในโหมด Job จะแสดงข้อความอาชีพแทน.
   Widget _buildProfileHeader(
     String name,
     String photoUrl,
@@ -133,6 +156,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// คำนวณและแสดงคะแนนรีวิวเฉลี่ยรวมของสูตรอาหารทั้งหมดที่ผู้ใช้เคยโพสต์.
+  ///
+  /// จะทำการดึงข้อมูลสูตรอาหารทั้งหมดของ [userId] มาหาค่าเฉลี่ย
+  /// และแสดงผลพร้อมจำนวนรีวิวรวม.
   Widget _buildUserRating(String? userId) {
     if (userId == null) return const SizedBox();
 
@@ -191,7 +218,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- Stats Section ---
+  /// สร้างส่วนแสดงสถิติจำนวนโพสต์ทั้งหมดของผู้ใช้.
   Widget _buildStatsRow(String? userId) {
     if (userId == null) return const SizedBox();
     return StreamBuilder<QuerySnapshot>(
@@ -226,15 +253,17 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- Grid Sections ---
+  /// สร้าง Grid View สำหรับแสดงรายการ recipes ที่ผู้ใช้สร้าง.
   Widget _buildRecipesGrid(BuildContext context, String? userId) {
     return _buildStreamGrid(context, 'recipes', userId, 'New Recipe');
   }
 
+  /// สร้าง Grid View สำหรับแสดงรายการ Jobs  ที่ผู้ใช้สร้าง.
   Widget _buildJobsGrid(BuildContext context, String? userId) {
     return _buildStreamGrid(context, 'jobs', userId, 'New Job');
   }
 
+  /// ฟังก์ชันหลักในการสร้าง Grid View จากข้อมูล Stream ของ Firestore.
   Widget _buildStreamGrid(
     BuildContext context,
     String collection,
@@ -301,7 +330,6 @@ class ProfileScreen extends StatelessWidget {
                 rating: collection == 'recipes'
                     ? (data['rating'] ?? 0.0).toDouble()
                     : null,
-                // 🔴 ส่งค่า reviewCount เพิ่มเข้าไปด้วย
                 reviewCount: collection == 'recipes'
                     ? (data['reviewCount'] ?? 0)
                     : null,
@@ -313,7 +341,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- UI Components ---
+  /// สร้างแถบสลับโหมดระหว่าง My Recipes และ My Jobs.
   Widget _buildTabToggle() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -339,6 +367,9 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างปุ่มกดแต่ละอันสำหรับแถบสลับโหมด.
+  ///
+  /// สีและเงาของปุ่มจะเปลี่ยนไปตามสถานะ [isActive].
   Widget _buildToggleItem(String label, bool isActive, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
@@ -373,6 +404,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างการ์ดแสดงผลข้อมูลของแต่ละโพสต์ภายใน Grid View.
+  ///
+  /// รองรับการแสดงผลทั้งรูปภาพ [imageUrl], หัวข้อ [title], และรายละเอียดรอง [subTitle].
+  /// มีเงื่อนไขการสลับตำแหน่ง หากเป็นสูตรอาหาร มีค่า [rating] ถูกส่งมา จะนำคะแนนดาวไปไว้ด้านซ้าย
+  /// และย้ายข้อมูลเวลา subTitle ไปไว้ด้านขวาแทน.
   Widget _buildItemCard({
     required String title,
     required String subTitle,
@@ -429,9 +465,7 @@ class ProfileScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 🔴 ถ้ามีการส่งค่า rating มา (แสดงว่าเป็นโหมด Recipe)
                     if (rating != null) ...[
-                      // 1. ฝั่งซ้าย: คะแนนรีวิว
                       Row(
                         children: [
                           Icon(
@@ -450,7 +484,6 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      // 2. ฝั่งขวา: ไอคอนนาฬิกา + เวลาทำอาหาร
                       Row(
                         children: [
                           Icon(
@@ -468,9 +501,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ]
-                    // 🔴 ถ้าไม่มีค่า rating (แสดงว่าเป็นโหมด Job) ให้โชว์ชิดซ้ายปกติ
-                    else ...[
+                    ] else ...[
                       Text(
                         subTitle,
                         style: TextStyle(
@@ -489,6 +520,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// สร้างการ์ดปุ่มกดสำหรับให้ผู้ใช้สร้างโพสต์ใหม่.
   Widget _buildAddNewCard(BuildContext context, String label) {
     return GestureDetector(
       onTap: () =>
@@ -525,6 +557,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// แสดงหน้าต่าง Modal การตั้งค่าบัญชีและการล็อกเอาต์.
   void _showSettingsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
