@@ -40,12 +40,6 @@ class _SavedScreenState extends State<SavedScreen> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.tune, color: Color(0xFF1A2B4C)),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
